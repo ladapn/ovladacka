@@ -1,4 +1,6 @@
 from bluepy import btle
+import pygame    
+
 
 class MyDelegate(btle.DefaultDelegate):
     def __init__(self, params):
@@ -10,6 +12,14 @@ class MyDelegate(btle.DefaultDelegate):
         # ... process 'data'
         print("data received")
         print(data)
+
+def KeyTranslator(key):
+    return {
+        273: b'A',
+        274: b'C',
+        275: b'B',
+        276: b'D'
+    }.get(key, None) #TODO add other commands too
 
 address = '00:13:AA:00:12:27'
 service_uuid = btle.UUID('0000ffe0-0000-1000-8000-00805f9b34fb')
@@ -25,12 +35,31 @@ ch = svc.getCharacteristics( char_uuid )[0]
 # Without this nothing happens when device sends data to PC...
 p.writeCharacteristic(ch.valHandle + 1, b"\x01\x00")
 
+# Prepare pygame
+pygame.init()
+screen = pygame.display.set_mode((100, 100))
 
-ch.write(b'B')
-while True:
-    if p.waitForNotifications(1.0):
+done = False
+
+while not done:
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            print(event.key)
+# TODO implement switch as a dictionary
+            if event.key == 27:  # Esc
+                done = True
+                break
+            cmd = KeyTranslator(event.key)
+            if cmd != None:
+                ch.write(cmd)
+        elif event.type == pygame.QUIT:
+            done = True
+
+#
+#while True:
+#    if p.waitForNotifications(1.0):
         # handleNotification() was called
-        continue
+#        continue
 
-    print("Waiting...")
+#    print("Waiting...")
     # Perhaps do something else here
