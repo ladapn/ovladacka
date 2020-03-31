@@ -10,7 +10,8 @@ Characteristic (Handle 0xcf71)
 	0000ffe1-0000-1000-8000-00805f9b34fb
 	Unknown
 
-
+bluepy's handling of incomming notifications is not much asynchronous, it just 
+checks for notification during any bluepy call (read, write, waitfornotifications...)
 
 
 ---
