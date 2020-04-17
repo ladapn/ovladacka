@@ -1,24 +1,59 @@
 from bluepy import btle
 from queue import Queue, Empty
 from pynput.keyboard import Key, Listener
+import time
+import csv
 
 import struct
+import atexit
 
 q = Queue()
-
+known_packet_id = [101, 102]
 
 class MyDelegate(btle.DefaultDelegate):
-    def __init__(self, params):
-        btle.DefaultDelegate._ _init__(self)
+    def __init__(self):
+        btle.DefaultDelegate.__init__(self)
         # ... initialise here
+        self.out_file = open(time.strftime("%Y-%m-%d-%H-%M-%S") + '.csv', 'w')
+        self.csv_writer = csv.writer(self.out_file)
+        # Destructor???
 
     def handleNotification(self, cHandle, data):
         # ... perhaps check cHandle
         # ... process 'data'
         print("data received")
         print(data)
-        # '<' means little endian AND no padding
-        print(struct.unpack('<BIIB', data))
+
+        # get byte, check ID, if known id, get its length
+        # knowing length, check CRC -> if ok, packet ok -> extract;
+        # if not, go back to ID crawling
+        remaining_data = data
+
+        idx = 0
+        while idx < len(data):
+            if data[idx] in known_packet_id:
+                # get packet len - TODO
+                packet_len = 10;
+                # check CRC!!! TODO
+                packet = data[idx: idx + packet_len]
+
+                # '<' means little endian AND no padding
+                try:
+                    print(list(struct.unpack('<BIIB', packet)))
+                    self.csv_writer.writerow(list(struct.unpack('<BIIB', packet)))
+                except struct.error as e:
+                    # TODO: sometimes it sends 2 (or more?) packets in one go -> how often, do I need to deal with that?
+                    print('something bad has happen while receiving data: {0}'.format(e))
+
+                idx = idx + packet_len - 1
+
+            idx = idx + 1
+
+
+    # better design needed... -> one object that would go to with in main statement
+    #@atexit.register
+    def close(self):
+        self.out_file.close()
 
 
 def KeyTranslator(key):
@@ -52,7 +87,9 @@ p = btle.Peripheral(address)
 
 print('Connected Successfully')
 
-p.setDelegate(MyDelegate(0))
+my_delegate = MyDelegate()
+p.setDelegate(MyDelegate())
+
 
 svc = p.getServiceByUUID(service_uuid)
 ch = svc.getCharacteristics(char_uuid)[0]
@@ -89,5 +126,7 @@ while True:
 p.disconnect()
 # Should be stopped by now, but just in case
 listener.stop()
+#close csv file
+my_delegate.close()
 
 print('Disconnected... Good Bye!')
