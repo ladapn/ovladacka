@@ -8,7 +8,7 @@ import struct
 import atexit
 
 q = Queue()
-known_packet_id = [101, 102]
+known_packet_id = [101, 102, 103]
 
 class MyDelegate(btle.DefaultDelegate):
     def __init__(self):
@@ -16,6 +16,7 @@ class MyDelegate(btle.DefaultDelegate):
         # ... initialise here
         self.out_file = open(time.strftime("%Y-%m-%d-%H-%M-%S") + '.csv', 'w')
         self.csv_writer = csv.writer(self.out_file)
+        self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         # Destructor???
 
     def handleNotification(self, cHandle, data):
