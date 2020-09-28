@@ -3,12 +3,13 @@ from queue import Queue, Empty
 from pynput.keyboard import Key, Listener
 import time
 import csv
-
+import pandas as pd
 import struct
-import atexit
+
 
 q = Queue()
 known_packet_id = [101, 102, 103]
+
 
 class MyDelegate(btle.DefaultDelegate):
     def __init__(self):
@@ -17,6 +18,7 @@ class MyDelegate(btle.DefaultDelegate):
         self.out_file = open(time.strftime("%Y-%m-%d-%H-%M-%S") + '.csv', 'w')
         self.csv_writer = csv.writer(self.out_file)
         self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
+        self.data_frame_dict = {}
         # Destructor???
 
     def handleNotification(self, cHandle, data):
@@ -28,33 +30,44 @@ class MyDelegate(btle.DefaultDelegate):
         # get byte, check ID, if known id, get its length
         # knowing length, check CRC -> if ok, packet ok -> extract;
         # if not, go back to ID crawling
-        remaining_data = data
 
         idx = 0
         while idx < len(data):
-            if data[idx] in known_packet_id:
+            packet_id = data[idx]
+            if packet_id in known_packet_id:
                 # get packet len - TODO
-                packet_len = 10;
+                packet_len = 10
                 # check CRC!!! TODO
                 packet = data[idx: idx + packet_len]
 
                 # '<' means little endian AND no padding
                 try:
-                    print(list(struct.unpack('<BIIB', packet)))
-                    self.csv_writer.writerow(list(struct.unpack('<BIIB', packet)))
+                    packet_data = list(struct.unpack('<BIIB', packet))
+                    print(packet_data)
+
+                    packet_timestamp = packet_data[1]
+                    packet_meas = packet_data[2]
+
+                    if packet_timestamp in self.data_frame_dict:
+                        self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
+                    else:
+                        self.data_frame_dict[packet_timestamp] = dict.fromkeys(known_packet_id, None)
+                        self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
+
+                    self.csv_writer.writerow(packet_data)
                 except struct.error as e:
-                    # TODO: sometimes it sends 2 (or more?) packets in one go -> how often, do I need to deal with that?
                     print('something bad has happen while receiving data: {0}'.format(e))
 
                 idx = idx + packet_len - 1
 
             idx = idx + 1
 
-
     # better design needed... -> one object that would go to with in main statement
-    #@atexit.register
+
     def close(self):
         self.out_file.close()
+        data_frame = pd.DataFrame(self.data_frame_dict)
+        data_frame.transpose().to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
 
 
 def KeyTranslator(key):
@@ -89,7 +102,7 @@ p = btle.Peripheral(address)
 print('Connected Successfully')
 
 my_delegate = MyDelegate()
-p.setDelegate(MyDelegate())
+p.setDelegate(my_delegate)
 
 
 svc = p.getServiceByUUID(service_uuid)
@@ -127,7 +140,7 @@ while True:
 p.disconnect()
 # Should be stopped by now, but just in case
 listener.stop()
-#close csv file
+# close csv file
 my_delegate.close()
 
 print('Disconnected... Good Bye!')
