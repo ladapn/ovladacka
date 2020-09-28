@@ -67,7 +67,10 @@ class MyDelegate(btle.DefaultDelegate):
     def close(self):
         self.out_file.close()
         data_frame = pd.DataFrame(self.data_frame_dict)
-        data_frame.transpose().to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
+        data_frame = data_frame.transpose()
+        # Add a column containing minimum of the other columns
+        data_frame['Min'] = data_frame.min(axis=1)
+        data_frame.to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
 
 
 def KeyTranslator(key):
@@ -97,7 +100,18 @@ service_uuid = btle.UUID('0000ffe0-0000-1000-8000-00805f9b34fb')
 char_uuid = btle.UUID('0000ffe1-0000-1000-8000-00805f9b34fb')
 
 print('Attempting to connect to {0}'.format(address))
-p = btle.Peripheral(address)
+
+number_of_retries = 3
+for tries in range(number_of_retries):
+    try:
+        p = btle.Peripheral(address)
+        break
+    except btle.BTLEDisconnectError as e:
+        print(e)
+        if tries == (number_of_retries - 1):
+            print('Giving up')
+            exit()
+        print('Trying again...')
 
 print('Connected Successfully')
 
