@@ -8,7 +8,7 @@ import struct
 
 
 q = Queue()
-known_packet_id = [101, 102, 103]
+known_packet_id = [100, 101, 102, 103]
 
 
 class MyDelegate(btle.DefaultDelegate):
@@ -56,7 +56,7 @@ class MyDelegate(btle.DefaultDelegate):
 
                     self.csv_writer.writerow(packet_data)
                 except struct.error as e:
-                    print('something bad has happen while receiving data: {0}'.format(e))
+                    print('something bad has happened while receiving data: {0}'.format(e))
 
                 idx = idx + packet_len - 1
 
@@ -69,6 +69,8 @@ class MyDelegate(btle.DefaultDelegate):
         data_frame = pd.DataFrame(self.data_frame_dict)
         data_frame = data_frame.transpose()
         # Add a column containing minimum of the other columns
+        #data_frame['Min'] = data_frame[['101', '102', '103']].min(axis=1)
+        data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
         data_frame['Min'] = data_frame.min(axis=1)
         data_frame.to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
 
