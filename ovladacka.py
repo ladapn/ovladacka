@@ -43,6 +43,8 @@ class MyDelegate(btle.DefaultDelegate):
         self.status_file = open(time_string + '_stat.csv', 'w')
         self.status_csv = csv.writer(self.status_file)
 
+        self.leftovers = None
+
         # TODO: header
         #self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
 
@@ -85,12 +87,24 @@ class MyDelegate(btle.DefaultDelegate):
         # knowing length, check CRC -> if ok, packet ok -> extract;
         # if not, go back to ID crawling
 
+        # This is to handle data split into multiple data bursts
+        if self.leftovers:
+            # put the leftover of previous data burst in front of the current one
+            data = self.leftovers + data
+            self.leftovers = None
+
         idx = 0
         while idx < len(data):
             packet_id = data[idx]
             if packet_id in known_packet_id:
                 packet_len = packet_lengths[packet_id]
                 packet = data[idx: idx + packet_len]
+
+                # Is the packet contained in this data, or does it continue in the next burst?
+                if idx + packet_len > len(data):
+                    self.leftovers = data[idx:]
+                    break
+
                 if verify_checksum(packet):
                     if packet_id in usnd_packet_ids:
                         self.process_usnd_packet(packet, packet_id)
