@@ -6,20 +6,74 @@ import csv
 import pandas as pd
 import struct
 
-
 q = Queue()
-known_packet_id = [100, 101, 102, 103]
+
+usnd_packet_ids = [100, 101, 102, 103]
+status_packet_ids = [80]
+
+packet_lengths = {100: 10,
+                  101: 10,
+                  102: 10,
+                  103: 10,
+                  80: 16}
+
+known_packet_id = usnd_packet_ids + status_packet_ids
+
+
+def verify_checksum(packet):
+    checksum = packet[0]
+    # Don't include last bit, that's the checksum
+    for b in packet[1:-1]:
+        checksum ^= b
+
+    # Compare checksum with last byte -> checksum byte
+    return checksum == packet[-1]
 
 
 class MyDelegate(btle.DefaultDelegate):
     def __init__(self):
         btle.DefaultDelegate.__init__(self)
         # ... initialise here
-        self.out_file = open(time.strftime("%Y-%m-%d-%H-%M-%S") + '.csv', 'w')
+        time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
+        self.out_file = open(time_string + '.csv', 'w')
         self.csv_writer = csv.writer(self.out_file)
         self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         self.data_frame_dict = {}
+
+        self.status_file = open(time_string + '_stat.csv', 'w')
+        self.status_csv = csv.writer(self.status_file)
+
+        # TODO: header
+        #self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
+
         # Destructor???
+
+    def process_usnd_packet(self, packet, packet_id):
+        try:
+            packet_data = list(struct.unpack('<BIIB', packet))
+            print(packet_data)
+
+            packet_timestamp = packet_data[1]
+            packet_meas = packet_data[2]
+
+            if packet_timestamp in self.data_frame_dict:
+                self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
+            else:
+                self.data_frame_dict[packet_timestamp] = dict.fromkeys(usnd_packet_ids, None)
+                self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
+
+            self.csv_writer.writerow(packet_data)
+        except struct.error as ex:
+            print('something bad has happened while processing ultrasound packet data: {0}'.format(ex))
+
+    def process_status_packet(self, packet, packet_id):
+        try:
+            packet_data = list(struct.unpack('<BIIHHHB', packet))
+            print(packet_data)
+
+            self.status_csv.writerow(packet_data)
+        except struct.error as ex:
+            print('something bad has happened while processing status packet data: {0}'.format(ex))
 
     def handleNotification(self, cHandle, data):
         # ... perhaps check cHandle
@@ -35,28 +89,15 @@ class MyDelegate(btle.DefaultDelegate):
         while idx < len(data):
             packet_id = data[idx]
             if packet_id in known_packet_id:
-                # get packet len - TODO
-                packet_len = 10
-                # check CRC!!! TODO
+                packet_len = packet_lengths[packet_id]
                 packet = data[idx: idx + packet_len]
-
-                # '<' means little endian AND no padding
-                try:
-                    packet_data = list(struct.unpack('<BIIB', packet))
-                    print(packet_data)
-
-                    packet_timestamp = packet_data[1]
-                    packet_meas = packet_data[2]
-
-                    if packet_timestamp in self.data_frame_dict:
-                        self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
-                    else:
-                        self.data_frame_dict[packet_timestamp] = dict.fromkeys(known_packet_id, None)
-                        self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
-
-                    self.csv_writer.writerow(packet_data)
-                except struct.error as e:
-                    print('something bad has happened while receiving data: {0}'.format(e))
+                if verify_checksum(packet):
+                    if packet_id in usnd_packet_ids:
+                        self.process_usnd_packet(packet, packet_id)
+                    elif packet_id in status_packet_ids:
+                        self.process_status_packet(packet, packet_id)
+                else:
+                    print('Broken checksum found, Packet ID: {0}'.format(packet_id))
 
                 idx = idx + packet_len - 1
 
@@ -66,10 +107,11 @@ class MyDelegate(btle.DefaultDelegate):
 
     def close(self):
         self.out_file.close()
+        self.status_file.close()
         data_frame = pd.DataFrame(self.data_frame_dict)
         data_frame = data_frame.transpose()
         # Add a column containing minimum of the other columns
-        #data_frame['Min'] = data_frame[['101', '102', '103']].min(axis=1)
+        # data_frame['Min'] = data_frame[['101', '102', '103']].min(axis=1)
         data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
         data_frame['Min'] = data_frame.min(axis=1)
         data_frame.to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
@@ -119,7 +161,6 @@ print('Connected Successfully')
 
 my_delegate = MyDelegate()
 p.setDelegate(my_delegate)
-
 
 svc = p.getServiceByUUID(service_uuid)
 ch = svc.getCharacteristics(char_uuid)[0]
