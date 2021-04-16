@@ -35,9 +35,9 @@ class MyDelegate(btle.DefaultDelegate):
         btle.DefaultDelegate.__init__(self)
         # ... initialise here
         time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
-        self.out_file = open(time_string + '.csv', 'w')
-        self.csv_writer = csv.writer(self.out_file)
-        self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
+        self.usnd_file = open(time_string + '.csv', 'w')
+        self.usnd_writer = csv.writer(self.usnd_file)
+        self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         self.data_frame_dict = {}
 
         self.status_file = open(time_string + '_stat.csv', 'w')
@@ -45,8 +45,7 @@ class MyDelegate(btle.DefaultDelegate):
 
         self.leftovers = None
 
-        # TODO: header
-        #self.csv_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
+        self.status_csv.writerow(['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc'])
 
         # Destructor???
 
@@ -64,7 +63,7 @@ class MyDelegate(btle.DefaultDelegate):
                 self.data_frame_dict[packet_timestamp] = dict.fromkeys(usnd_packet_ids, None)
                 self.data_frame_dict[packet_timestamp][packet_id] = packet_meas
 
-            self.csv_writer.writerow(packet_data)
+            self.usnd_writer.writerow(packet_data)
         except struct.error as ex:
             print('something bad has happened while processing ultrasound packet data: {0}'.format(ex))
 
@@ -120,7 +119,7 @@ class MyDelegate(btle.DefaultDelegate):
     # better design needed... -> one object that would go to with in main statement
 
     def close(self):
-        self.out_file.close()
+        self.usnd_file.close()
         self.status_file.close()
         data_frame = pd.DataFrame(self.data_frame_dict)
         data_frame = data_frame.transpose()
