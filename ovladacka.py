@@ -71,6 +71,8 @@ class MyDelegate(btle.DefaultDelegate):
         try:
             packet_data = list(struct.unpack('<BIIHHHB', packet))
             print(packet_data)
+            print('SW version: {:07x}'.format(packet_data[2]))
+            # TODO: put in a file
 
             self.status_csv.writerow(packet_data)
         except struct.error as ex:
