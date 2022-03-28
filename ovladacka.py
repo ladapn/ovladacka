@@ -190,62 +190,67 @@ def on_press(key):
 
 
 # =============================================================================
-address = '00:13:AA:00:12:27'
-service_uuid = btle.UUID('0000ffe0-0000-1000-8000-00805f9b34fb')
-char_uuid = btle.UUID('0000ffe1-0000-1000-8000-00805f9b34fb')
+def main():
 
-print('Attempting to connect to {0}'.format(address))
+    address = '00:13:AA:00:12:27'
+    service_uuid = btle.UUID('0000ffe0-0000-1000-8000-00805f9b34fb')
+    char_uuid = btle.UUID('0000ffe1-0000-1000-8000-00805f9b34fb')
 
-number_of_retries = 3
-for tries in range(number_of_retries):
-    try:
-        p = btle.Peripheral(address)
-        break
-    except btle.BTLEDisconnectError as e:
-        print(e)
-        if tries == (number_of_retries - 1):
-            print('Giving up')
-            exit()
-        print('Trying again...')
+    print('Attempting to connect to {0}'.format(address))
 
-print('Connected Successfully')
+    number_of_retries = 3
+    for tries in range(number_of_retries):
+        try:
+            p = btle.Peripheral(address)
+            break
+        except btle.BTLEDisconnectError as e:
+            print(e)
+            if tries == (number_of_retries - 1):
+                print('Giving up')
+                exit()
+            print('Trying again...')
 
-my_delegate = MyDelegate()
-p.setDelegate(my_delegate)
+    print('Connected Successfully')
 
-svc = p.getServiceByUUID(service_uuid)
-ch = svc.getCharacteristics(char_uuid)[0]
+    my_delegate = MyDelegate()
+    p.setDelegate(my_delegate)
 
-# Enable notifications for the characteristics
-# Without this nothing happens when device sends data to PC...
-p.writeCharacteristic(ch.valHandle + 1, b"\x01\x00")
-#
-# =============================================================================
+    svc = p.getServiceByUUID(service_uuid)
+    ch = svc.getCharacteristics(char_uuid)[0]
 
-keyboard_manager = KeyboardManager()
-keyboard_manager.start()
+    # Enable notifications for the characteristics
+    # Without this nothing happens when device sends data to PC...
+    p.writeCharacteristic(ch.valHandle + 1, b"\x01\x00")
+    #
+    # =============================================================================
 
-while True:
+    keyboard_manager = KeyboardManager()
+    keyboard_manager.start()
 
-    try:
-        key = keyboard_manager.get_key_nowait()
-        if key:
-            cmd = KeyTranslator(key)
+    while True:
 
-            if cmd:
-                print(cmd)
-                ch.write(cmd)
-    except KeyboardManagerEnded:
-        break
+        try:
+            key = keyboard_manager.get_key_nowait()
+            if key:
+                cmd = KeyTranslator(key)
 
-    # TODO: reconnect when connection lost
-    p.waitForNotifications(0.001)
+                if cmd:
+                    print(cmd)
+                    ch.write(cmd)
+        except KeyboardManagerEnded:
+            break
 
-# Apparently the destructor of p does not call disconnect()
-p.disconnect()
-# Should be stopped by now, but just in case
-keyboard_manager.stop()
-# close csv file
-my_delegate.close()
+        # TODO: reconnect when connection lost
+        p.waitForNotifications(0.001)
 
-print('Disconnected... Good Bye!')
+    # Apparently the destructor of p does not call disconnect()
+    p.disconnect()
+    # Should be stopped by now, but just in case
+    keyboard_manager.stop()
+    # close csv file
+    my_delegate.close()
+
+    print('Disconnected... Good Bye!')
+
+if __name__ == '__main__':
+    main()
