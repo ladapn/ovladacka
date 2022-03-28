@@ -142,6 +142,42 @@ def KeyTranslator(key):
     }.get(key, None)  # TODO add other commands too
 
 
+class KeyboardManagerEnded(Exception):
+    pass
+
+
+class KeyboardManager:
+    def __init__(self):
+        self.key_queue = Queue()
+        self.listener = Listener(on_press=self.on_press)
+
+    def on_press(self, key):
+        """Callback to handle key press event"""
+        print(f'{key} pressed')
+
+        self.key_queue.put(key)
+
+        if key == Key.esc:
+            return False
+        else:
+            return True
+
+    def start(self):
+        self.listener.start()
+
+    def stop(self):
+        self.listener.stop()
+
+    def get_key_nowait(self):
+        try:
+            key = self.key_queue.get_nowait()
+            if key == Key.esc:
+                raise KeyboardManagerEnded
+        except Empty:
+            key = None
+        return key
+
+
 def on_press(key):
     print('{0} pressed'.format(
         key))
@@ -186,24 +222,21 @@ p.writeCharacteristic(ch.valHandle + 1, b"\x01\x00")
 #
 # =============================================================================
 
-listener = Listener(
-    on_press=on_press)
-
-listener.start()
+keyboard_manager = KeyboardManager()
+keyboard_manager.start()
 
 while True:
 
     try:
-        k = q.get_nowait()
-        if k:
-            cmd = KeyTranslator(k)
+        key = keyboard_manager.get_key_nowait()
+        if key:
+            cmd = KeyTranslator(key)
+
             if cmd:
                 print(cmd)
                 ch.write(cmd)
-        else:
-            break
-    except Empty:
-        pass
+    except KeyboardManagerEnded:
+        break
 
     # TODO: reconnect when connection lost
     p.waitForNotifications(0.001)
@@ -211,7 +244,7 @@ while True:
 # Apparently the destructor of p does not call disconnect()
 p.disconnect()
 # Should be stopped by now, but just in case
-listener.stop()
+keyboard_manager.stop()
 # close csv file
 my_delegate.close()
 
