@@ -1,12 +1,10 @@
 from bluepy import btle
-from queue import Queue, Empty
-from pynput.keyboard import Key, Listener
+import keyboard_manager
 import time
 import csv
 import pandas as pd
 import struct
 
-q = Queue()
 
 usnd_packet_ids = [100, 101, 102, 103]
 status_packet_ids = [80]
@@ -132,63 +130,6 @@ class MyDelegate(btle.DefaultDelegate):
         data_frame.to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
 
 
-def KeyTranslator(key):
-    return {
-        Key.up: b'A',
-        Key.down: b'C',
-        Key.right: b'B',
-        Key.left: b'D',
-        Key.space: b'E'
-    }.get(key, None)  # TODO add other commands too
-
-
-class KeyboardManagerEnded(Exception):
-    pass
-
-
-class KeyboardManager:
-    def __init__(self):
-        self.key_queue = Queue()
-        self.listener = Listener(on_press=self.on_press)
-
-    def on_press(self, key):
-        """Callback to handle key press event"""
-        print(f'{key} pressed')
-
-        self.key_queue.put(key)
-
-        if key == Key.esc:
-            return False
-        else:
-            return True
-
-    def start(self):
-        self.listener.start()
-
-    def stop(self):
-        self.listener.stop()
-
-    def get_key_nowait(self):
-        try:
-            key = self.key_queue.get_nowait()
-            if key == Key.esc:
-                raise KeyboardManagerEnded
-        except Empty:
-            key = None
-        return key
-
-
-def on_press(key):
-    print('{0} pressed'.format(
-        key))
-    # global q
-    if key == Key.esc:
-        q.put(None)
-        return False
-    else:
-        q.put(key)
-
-
 # =============================================================================
 def main():
 
@@ -196,7 +137,7 @@ def main():
     service_uuid = btle.UUID('0000ffe0-0000-1000-8000-00805f9b34fb')
     char_uuid = btle.UUID('0000ffe1-0000-1000-8000-00805f9b34fb')
 
-    print('Attempting to connect to {0}'.format(address))
+    print(f'Attempting to connect to {address}')
 
     number_of_retries = 3
     for tries in range(number_of_retries):
@@ -224,20 +165,20 @@ def main():
     #
     # =============================================================================
 
-    keyboard_manager = KeyboardManager()
-    keyboard_manager.start()
+    key_manager = keyboard_manager.KeyboardManager()
+    key_manager.start()
 
     while True:
 
         try:
-            key = keyboard_manager.get_key_nowait()
+            key = key_manager.get_key_nowait()
             if key:
-                cmd = KeyTranslator(key)
+                cmd = keyboard_manager.key_translator(key)
 
                 if cmd:
                     print(cmd)
                     ch.write(cmd)
-        except KeyboardManagerEnded:
+        except keyboard_manager.KeyboardManagerEnded:
             break
 
         # TODO: reconnect when connection lost
@@ -246,11 +187,12 @@ def main():
     # Apparently the destructor of p does not call disconnect()
     p.disconnect()
     # Should be stopped by now, but just in case
-    keyboard_manager.stop()
+    key_manager.stop()
     # close csv file
     my_delegate.close()
 
     print('Disconnected... Good Bye!')
+
 
 if __name__ == '__main__':
     main()
