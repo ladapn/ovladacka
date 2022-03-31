@@ -4,6 +4,7 @@ import time
 import csv
 import pandas as pd
 import struct
+import queue
 
 
 usnd_packet_ids = [100, 101, 102, 103]
@@ -28,7 +29,18 @@ def verify_checksum(packet):
     return checksum == packet[-1]
 
 
-class MyDelegate(btle.DefaultDelegate):
+class RobotCommDelegate(btle.DefaultDelegate):
+    def __init__(self):
+        btle.DefaultDelegate.__init__(self)
+        self.pkt_processor = PacketProcessor()
+
+    def handleNotification(self, cHandle, data):
+        self.pkt_processor.process_incoming_data(data)
+        # TODO: put data to a queue
+        # self.incomming_data_queue.add(data) -> a to bude vse, co tu bude
+
+
+class PacketProcessor:
     def __init__(self):
         btle.DefaultDelegate.__init__(self)
         # ... initialise here
@@ -44,8 +56,6 @@ class MyDelegate(btle.DefaultDelegate):
         self.leftovers = None
 
         self.status_csv.writerow(['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc'])
-
-        # Destructor???
 
     def process_usnd_packet(self, packet, packet_id):
         try:
@@ -70,14 +80,13 @@ class MyDelegate(btle.DefaultDelegate):
             packet_data = list(struct.unpack('<BIIHHHB', packet))
             print(packet_data)
             print('SW version: {:07x}'.format(packet_data[2]))
-            # TODO: put in a file
 
             self.status_csv.writerow(packet_data)
         except struct.error as ex:
             print('something bad has happened while processing status packet data: {0}'.format(ex))
 
-    def handleNotification(self, cHandle, data):
-        # ... perhaps check cHandle
+    def process_incoming_data(self, data):
+
         # ... process 'data'
         print("data received")
         print(data)
@@ -110,13 +119,11 @@ class MyDelegate(btle.DefaultDelegate):
                     elif packet_id in status_packet_ids:
                         self.process_status_packet(packet, packet_id)
                 else:
-                    print('Broken checksum found, Packet ID: {0}'.format(packet_id))
+                    print(f'Broken checksum found, Packet ID: {packet_id}')
 
                 idx = idx + packet_len - 1
 
             idx = idx + 1
-
-    # better design needed... -> one object that would go to with in main statement
 
     def close(self):
         self.usnd_file.close()
@@ -153,7 +160,7 @@ def main():
 
     print('Connected Successfully')
 
-    my_delegate = MyDelegate()
+    my_delegate = RobotCommDelegate()
     p.setDelegate(my_delegate)
 
     svc = p.getServiceByUUID(service_uuid)
@@ -174,10 +181,11 @@ def main():
             key = key_manager.get_key_nowait()
             if key:
                 cmd = keyboard_manager.key_translator(key)
-
                 if cmd:
                     print(cmd)
                     ch.write(cmd)
+
+            # TODO zkontroluj frontu prichozich dat -> zavolej paket parser
         except keyboard_manager.KeyboardManagerEnded:
             break
 
@@ -189,7 +197,7 @@ def main():
     # Should be stopped by now, but just in case
     key_manager.stop()
     # close csv file
-    my_delegate.close()
+    my_delegate.pkt_processor.close()
 
     print('Disconnected... Good Bye!')
 
