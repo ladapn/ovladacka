@@ -4,7 +4,7 @@ import time
 import csv
 import pandas as pd
 import struct
-import queue
+# import queue
 
 
 usnd_packet_ids = [100, 101, 102, 103]
@@ -27,7 +27,7 @@ class RobotCommDelegate(btle.DefaultDelegate):
     def handleNotification(self, cHandle, data):
         self.pkt_processor.process_incoming_data(data)
         # TODO: put data to a queue
-        # self.incomming_data_queue.add(data) -> a to bude vse, co tu bude
+        # self.incoming_data_queue.add(data) -> a to bude vse, co tu bude
 
 
 class PacketWriter:
@@ -81,7 +81,7 @@ class PacketProcessor:
             packet_data = list(struct.unpack(packet_format, raw_packet))
         except struct.error as ex:
             print(f'something bad has happened while processing data of packet ID {packet_id}: {ex}')
-            packet_data = None
+            packet_data = None  # TODO get rid of return value -> just use exceptions
 
         return packet_data
 
@@ -96,24 +96,20 @@ class PacketProcessor:
         return checksum == packet[-1]
 
     def process_usnd_packet(self, packet, packet_id):
-        try:
-            packet_data = list(struct.unpack('<BIIB', packet))
-            print(packet_data)
+        packet_data = PacketProcessor.unpack_bytes('<BIIB', packet_id, packet)
 
+        if packet_data:
+            print(packet_data)
             self.packet_writer.write_usnd_packet(packet_id, packet_data)
 
-        except struct.error as ex:
-            print('something bad has happened while processing ultrasound packet data: {0}'.format(ex))
-
     def process_status_packet(self, packet, packet_id):
-        try:
-            packet_data = list(struct.unpack('<BIIHHHB', packet))
+        packet_data = PacketProcessor.unpack_bytes('<BIIHHHB', packet_id, packet)
+        if packet_data:
             print(packet_data)
-            print('SW version: {:07x}'.format(packet_data[2]))
+            # print('SW version: {:07x}'.format(packet_data[2]))
+            print(f'SW version: {packet_data[2]:07x}')
 
             self.packet_writer.write_status_packet(packet_data)
-        except struct.error as ex:
-            print('something bad has happened while processing status packet data: {0}'.format(ex))
 
     def process_incoming_data(self, data):
 
@@ -163,6 +159,8 @@ def main():
     char_uuid = btle.UUID('0000ffe1-0000-1000-8000-00805f9b34fb')
 
     print(f'Attempting to connect to {address}')
+
+    p = None
 
     number_of_retries = 3
     for tries in range(number_of_retries):
