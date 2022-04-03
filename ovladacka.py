@@ -4,17 +4,11 @@ import packet_writer
 import packet_parser
 # import queue
 
-# FIXME - duplicty -> minimalne neco z tohoto muzu za cenu malych uprav vyhodit
-usnd_packet_ids = [100, 101, 102, 103]
-status_packet_ids = [80]
-
 packet_lengths = {100: 10,
                   101: 10,
                   102: 10,
                   103: 10,
                   80: 16}
-
-known_packet_id = usnd_packet_ids + status_packet_ids
 
 
 class RobotCommDelegate(btle.DefaultDelegate):
@@ -32,17 +26,14 @@ class PacketProcessor:
     def __init__(self):
         self.leftovers = None
 
+        self.packet_processors = {80: (packet_parser.StatusPacketParser(), packet_writer.StatusPacketWriter())}
         # TODO -> processor could be a class -> but then this class should be renamed to somehitng (InputDataProcessor?)
         # TODO -> put all these related classes to one module: packet_data_manager or input_data_processor
-        usnd_processor = (packet_parser.UsndPacketParser(), packet_writer.USNDPacketWriter())
+        usnd_packet_ids = [100, 101, 102, 103]
+        usnd_processor = (packet_parser.UsndPacketParser(), packet_writer.USNDPacketWriter(usnd_packet_ids))
 
-        # TODO iterovat pres usnd_packet_IDs
-        self.packet_processors = {100: usnd_processor,
-                                  101: usnd_processor,
-                                  102: usnd_processor,
-                                  103: usnd_processor,
-                                  80: (packet_parser.StatusPacketParser(), packet_writer.StatusPacketWriter())
-                                  }
+        for packet_id in usnd_packet_ids:
+            self.packet_processors[packet_id] = usnd_processor
 
     @staticmethod
     def verify_checksum(packet):
@@ -83,7 +74,7 @@ class PacketProcessor:
         idx = 0
         while idx < len(data):
             packet_id = data[idx]
-            if packet_id in known_packet_id:
+            if packet_id in self.packet_processors:
                 packet_len = packet_lengths[packet_id]
                 packet = data[idx: idx + packet_len]
 

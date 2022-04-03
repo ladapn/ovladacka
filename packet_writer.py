@@ -3,8 +3,6 @@ import csv
 import pandas as pd
 from abc import ABC, abstractmethod
 
-usnd_packet_ids = [100, 101, 102, 103]
-
 
 class PacketWriter(ABC):
     def __init__(self):
@@ -20,13 +18,14 @@ class PacketWriter(ABC):
 
 
 class USNDPacketWriter(PacketWriter):
-    def __init__(self):
+    def __init__(self, usnd_packet_ids):
         super().__init__()
         time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
         self.usnd_file = open(time_string + '.csv', 'w')
         self.usnd_writer = csv.writer(self.usnd_file)
         self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         self.data_frame_dict = {}
+        self.usnd_packet_ids = usnd_packet_ids
 
     def write_packet(self, packet_id, packet_data):
         # TODO: work directly with DataFrame
@@ -35,7 +34,7 @@ class USNDPacketWriter(PacketWriter):
         if timestamp in self.data_frame_dict:
             self.data_frame_dict[timestamp][packet_id] = measurement
         else:
-            self.data_frame_dict[timestamp] = dict.fromkeys(usnd_packet_ids, None)
+            self.data_frame_dict[timestamp] = dict.fromkeys(self.usnd_packet_ids, None)
             self.data_frame_dict[timestamp][packet_id] = measurement
 
         self.usnd_writer.writerow(packet_data)
