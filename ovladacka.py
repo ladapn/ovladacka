@@ -4,17 +4,11 @@ import packet_writer
 import packet_parser
 # import queue
 
-packet_lengths = {100: 10,
-                  101: 10,
-                  102: 10,
-                  103: 10,
-                  80: 16}
-
 
 class RobotCommDelegate(btle.DefaultDelegate):
     def __init__(self):
         btle.DefaultDelegate.__init__(self)
-        self.pkt_processor = PacketProcessor()
+        self.pkt_processor = InputDataProcessor()
 
     def handleNotification(self, cHandle, data):
         self.pkt_processor.process_incoming_data(data)
@@ -23,41 +17,40 @@ class RobotCommDelegate(btle.DefaultDelegate):
 
 
 class PacketProcessor:
+    def __init__(self, parser, writer, packet_len):
+        self.parser = parser
+        self.writer = writer
+        self.packet_len = packet_len
+
+
+class InputDataProcessor:
     def __init__(self):
         self.leftovers = None
 
-        self.packet_processors = {80: (packet_parser.StatusPacketParser(), packet_writer.StatusPacketWriter())}
-        # TODO -> processor could be a class -> but then this class should be renamed to somehitng (InputDataProcessor?)
+        self.packet_processors = {80: PacketProcessor(parser=packet_parser.StatusPacketParser(),
+                                                      writer=packet_writer.StatusPacketWriter(),
+                                                      packet_len=16)}
+
         # TODO -> put all these related classes to one module: packet_data_manager or input_data_processor
         usnd_packet_ids = [100, 101, 102, 103]
-        usnd_processor = (packet_parser.UsndPacketParser(), packet_writer.USNDPacketWriter(usnd_packet_ids))
+        usnd_processor = PacketProcessor(parser=packet_parser.UsndPacketParser(),
+                                         writer=packet_writer.USNDPacketWriter(usnd_packet_ids),
+                                         packet_len=10)
 
         for packet_id in usnd_packet_ids:
             self.packet_processors[packet_id] = usnd_processor
 
-    @staticmethod
-    def verify_checksum(packet):
-        checksum = packet[0]
-        # Don't include last bit, that's the checksum
-        for b in packet[1:-1]:
-            checksum ^= b
-
-        # Compare checksum with last byte -> checksum byte
-        return checksum == packet[-1]
-
     def close(self):
-        for parser, writer in self.packet_processors.values():
-            writer.close()
+        for processor in self.packet_processors.values():
+            processor.writer.close()
 
-    def process_packet(self, packet_id, packet):
-        parser, writer = self.packet_processors[packet_id]
-        packet_data = parser.parse_raw_data(packet_id, packet)
+    @staticmethod
+    def process_packet(packet_id, packet, packet_processor):
+        packet_data = packet_processor.parser.parse_raw_data(packet_id, packet)
         print(packet_data)
-        writer.write_packet(packet_id, packet_data)
+        packet_processor.writer.write_packet(packet_id, packet_data)
 
     def process_incoming_data(self, data):
-
-        # ... process 'data'
         print("data received")
         print(data)
 
@@ -75,20 +68,22 @@ class PacketProcessor:
         while idx < len(data):
             packet_id = data[idx]
             if packet_id in self.packet_processors:
-                packet_len = packet_lengths[packet_id]
-                packet = data[idx: idx + packet_len]
+                packet_processor = self.packet_processors[packet_id]
+                packet = data[idx: idx + packet_processor.packet_len]
 
                 # Is the packet contained in this data, or does it continue in the next burst?
-                if idx + packet_len > len(data):
+                if idx + packet_processor.packet_len > len(data):
                     self.leftovers = data[idx:]
                     break
 
-                if PacketProcessor.verify_checksum(packet):
-                    self.process_packet(packet_id, packet)
-                else:
+                try:
+                    InputDataProcessor.process_packet(packet_id, packet, packet_processor)
+                except packet_parser.ParserBadChecksum:
                     print(f'Broken checksum found, Packet ID: {packet_id}')
+                except packet_parser.ParserException as ex:
+                    print(f'something bad has happened while processing data of packet ID {packet_id}: {ex}')
 
-                idx = idx + packet_len - 1
+                idx = idx + packet_processor.packet_len - 1
 
             idx = idx + 1
 
