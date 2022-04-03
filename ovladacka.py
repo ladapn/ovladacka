@@ -2,18 +2,16 @@ from bluepy import btle
 import keyboard_manager
 import packet_writer
 import packet_parser
-# import queue
+import queue
 
 
 class RobotCommDelegate(btle.DefaultDelegate):
-    def __init__(self):
+    def __init__(self, incoming_data_queue):
         btle.DefaultDelegate.__init__(self)
-        self.pkt_processor = InputDataProcessor()
+        self.incoming_data_queue = incoming_data_queue
 
     def handleNotification(self, cHandle, data):
-        self.pkt_processor.process_incoming_data(data)
-        # TODO: put data to a queue
-        # self.incoming_data_queue.add(data) -> a to bude vse, co tu bude
+        self.incoming_data_queue.put(data)
 
 
 class PacketProcessor:
@@ -112,7 +110,10 @@ def main():
 
     print('Connected Successfully')
 
-    my_delegate = RobotCommDelegate()
+    input_data_processor = InputDataProcessor()
+
+    incoming_data_queue = queue.Queue()
+    my_delegate = RobotCommDelegate(incoming_data_queue)
     p.setDelegate(my_delegate)
 
     svc = p.getServiceByUUID(service_uuid)
@@ -127,6 +128,7 @@ def main():
     key_manager = keyboard_manager.KeyboardManager()
     key_manager.start()
 
+    # TODO with key_manager, input_data_processor, BTLE_comm...
     while True:
 
         try:
@@ -136,20 +138,23 @@ def main():
                 if cmd:
                     print(cmd)
                     ch.write(cmd)
-
-            # TODO zkontroluj frontu prichozich dat -> zavolej paket parser
         except keyboard_manager.KeyboardManagerEnded:
             break
 
         # TODO: reconnect when connection lost
+        # TODO: waitForNotifications can also throw
         p.waitForNotifications(0.001)
+        try:
+            data = incoming_data_queue.get_nowait()
+            input_data_processor.process_incoming_data(data)
+        except queue.Empty:
+            pass
 
-    # Apparently the destructor of p does not call disconnect()
     p.disconnect()
     # Should be stopped by now, but just in case
     key_manager.stop()
     # close csv file
-    my_delegate.pkt_processor.close()
+    input_data_processor.close()
 
     print('Disconnected... Good Bye!')
 
