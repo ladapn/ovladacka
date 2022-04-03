@@ -1,12 +1,10 @@
 from bluepy import btle
 import keyboard_manager
-import time
-import csv
-import pandas as pd
-import struct
+import packet_writer
+import packet_parser
 # import queue
 
-
+# FIXME - duplicty -> minimalne neco z tohoto muzu za cenu malych uprav vyhodit
 usnd_packet_ids = [100, 101, 102, 103]
 status_packet_ids = [80]
 
@@ -30,60 +28,21 @@ class RobotCommDelegate(btle.DefaultDelegate):
         # self.incoming_data_queue.add(data) -> a to bude vse, co tu bude
 
 
-class PacketWriter:
-    def __init__(self):
-        time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
-        self.usnd_file = open(time_string + '.csv', 'w')
-        self.usnd_writer = csv.writer(self.usnd_file)
-        self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
-        self.data_frame_dict = {}
-
-        self.status_file = open(time_string + '_stat.csv', 'w')
-        self.status_csv = csv.writer(self.status_file)
-
-        self.status_csv.writerow(['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc'])
-
-    def write_usnd_packet(self, packet_id, packet_data):
-        # TODO: work directly with DataFrame
-        timestamp = packet_data[1]
-        measurement = packet_data[2]
-        if timestamp in self.data_frame_dict:
-            self.data_frame_dict[timestamp][packet_id] = measurement
-        else:
-            self.data_frame_dict[timestamp] = dict.fromkeys(usnd_packet_ids, None)
-            self.data_frame_dict[timestamp][packet_id] = measurement
-
-        self.usnd_writer.writerow(packet_data)
-
-    def write_status_packet(self, packet_data):
-        self.status_csv.writerow(packet_data)
-
-    def close(self):
-        self.usnd_file.close()
-        self.status_file.close()
-        data_frame = pd.DataFrame(self.data_frame_dict)
-        data_frame = data_frame.transpose()
-        # Add a column containing minimum of the other columns
-        # data_frame['Min'] = data_frame[['101', '102', '103']].min(axis=1)
-        data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
-        data_frame['Min'] = data_frame.min(axis=1)
-        data_frame.to_csv(time.strftime("%Y-%m-%d-%H-%M-%S") + '_pd.csv')
-
-
 class PacketProcessor:
     def __init__(self):
         self.leftovers = None
-        self.packet_writer = PacketWriter()
 
-    @staticmethod
-    def unpack_bytes(packet_format, packet_id, raw_packet):
-        try:
-            packet_data = list(struct.unpack(packet_format, raw_packet))
-        except struct.error as ex:
-            print(f'something bad has happened while processing data of packet ID {packet_id}: {ex}')
-            packet_data = None  # TODO get rid of return value -> just use exceptions
+        # TODO -> processor could be a class -> but then this class should be renamed to somehitng (InputDataProcessor?)
+        # TODO -> put all these related classes to one module: packet_data_manager or input_data_processor
+        usnd_processor = (packet_parser.UsndPacketParser(), packet_writer.USNDPacketWriter())
 
-        return packet_data
+        # TODO iterovat pres usnd_packet_IDs
+        self.packet_processors = {100: usnd_processor,
+                                  101: usnd_processor,
+                                  102: usnd_processor,
+                                  103: usnd_processor,
+                                  80: (packet_parser.StatusPacketParser(), packet_writer.StatusPacketWriter())
+                                  }
 
     @staticmethod
     def verify_checksum(packet):
@@ -95,21 +54,15 @@ class PacketProcessor:
         # Compare checksum with last byte -> checksum byte
         return checksum == packet[-1]
 
-    def process_usnd_packet(self, packet, packet_id):
-        packet_data = PacketProcessor.unpack_bytes('<BIIB', packet_id, packet)
+    def close(self):
+        for parser, writer in self.packet_processors.values():
+            writer.close()
 
-        if packet_data:
-            print(packet_data)
-            self.packet_writer.write_usnd_packet(packet_id, packet_data)
-
-    def process_status_packet(self, packet, packet_id):
-        packet_data = PacketProcessor.unpack_bytes('<BIIHHHB', packet_id, packet)
-        if packet_data:
-            print(packet_data)
-            # print('SW version: {:07x}'.format(packet_data[2]))
-            print(f'SW version: {packet_data[2]:07x}')
-
-            self.packet_writer.write_status_packet(packet_data)
+    def process_packet(self, packet_id, packet):
+        parser, writer = self.packet_processors[packet_id]
+        packet_data = parser.parse_raw_data(packet_id, packet)
+        print(packet_data)
+        writer.write_packet(packet_id, packet_data)
 
     def process_incoming_data(self, data):
 
@@ -140,10 +93,7 @@ class PacketProcessor:
                     break
 
                 if PacketProcessor.verify_checksum(packet):
-                    if packet_id in usnd_packet_ids:
-                        self.process_usnd_packet(packet, packet_id)
-                    elif packet_id in status_packet_ids:
-                        self.process_status_packet(packet, packet_id)
+                    self.process_packet(packet_id, packet)
                 else:
                     print(f'Broken checksum found, Packet ID: {packet_id}')
 
@@ -213,7 +163,7 @@ def main():
     # Should be stopped by now, but just in case
     key_manager.stop()
     # close csv file
-    my_delegate.pkt_processor.packet_writer.close()
+    my_delegate.pkt_processor.close()
 
     print('Disconnected... Good Bye!')
 
