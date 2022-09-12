@@ -10,7 +10,7 @@ class PacketParserTestCase(unittest.TestCase):
 
     def test_usnd_packet_parser_incomplete(self):
         parser = packet_parser.UsndPacketParser()
-        self.assertRaises(packet_parser.ParserException, parser.parse_raw_data, packet_id=100,
+        self.assertRaises(packet_parser.ParserBadChecksum, parser.parse_raw_data, packet_id=100,
                           raw_data=b'd\xc3\x89\x00')
 
     def test_status_packet_parser(self):
