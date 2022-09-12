@@ -1,3 +1,7 @@
 *.csv
 *.ods
-*.csv#
+__pycache__/
+robot_outputs/
+venv/
+.idea
+.coverage
