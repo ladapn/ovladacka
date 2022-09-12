@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 class PacketWriter(ABC):
     def __init__(self):
-        pass
+        self.time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
 
     @abstractmethod
     def write_packet(self, packet_id, packet_data):
@@ -20,8 +20,7 @@ class PacketWriter(ABC):
 class USNDPacketWriter(PacketWriter):
     def __init__(self, usnd_packet_ids):
         super().__init__()
-        time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
-        self.usnd_file = open(time_string + '.csv', 'w')
+        self.usnd_file = open(self.time_string + '.csv', 'w')
         self.usnd_writer = csv.writer(self.usnd_file)
         self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         self.data_frame_dict = {}
@@ -53,8 +52,7 @@ class USNDPacketWriter(PacketWriter):
 class StatusPacketWriter(PacketWriter):
     def __init__(self):
         super().__init__()
-        time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
-        self.status_file = open(time_string + '_stat.csv', 'w')
+        self.status_file = open(self.time_string + '_stat.csv', 'w')
         self.status_csv = csv.writer(self.status_file)
         self.status_csv.writerow(
             ['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc'])
