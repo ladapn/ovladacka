@@ -1,17 +1,8 @@
-from bluepy import btle
 import keyboard_manager
+import connection.btle_connection
 import packet_writer
 import packet_parser
 import queue
-
-
-class RobotCommDelegate(btle.DefaultDelegate):
-    def __init__(self, incoming_data_queue):
-        btle.DefaultDelegate.__init__(self)
-        self.incoming_data_queue = incoming_data_queue
-
-    def handleNotification(self, cHandle, data):
-        self.incoming_data_queue.put(data)
 
 
 class PacketProcessor:
@@ -89,40 +80,20 @@ class InputDataProcessor:
 def main():
 
     address = '00:13:AA:00:12:27'
-    service_uuid = btle.UUID('0000ffe0-0000-1000-8000-00805f9b34fb')
-    char_uuid = btle.UUID('0000ffe1-0000-1000-8000-00805f9b34fb')
+    service_uuid = '0000ffe0-0000-1000-8000-00805f9b34fb'
+    char_uuid = '0000ffe1-0000-1000-8000-00805f9b34fb'
+
+    incoming_data_queue = queue.Queue()
+    robot_conn = connection.btle_connection.BTLEConnection(address, service_uuid, char_uuid, incoming_data_queue)
 
     print(f'Attempting to connect to {address}')
 
-    p = None
-
-    number_of_retries = 3
-    for tries in range(number_of_retries):
-        try:
-            p = btle.Peripheral(address)
-            break
-        except btle.BTLEDisconnectError as e:
-            print(e)
-            if tries == (number_of_retries - 1):
-                print('Giving up')
-                exit()
-            print('Trying again...')
+    robot_conn.connect()
 
     print('Connected Successfully')
 
     input_data_processor = InputDataProcessor()
 
-    incoming_data_queue = queue.Queue()
-    my_delegate = RobotCommDelegate(incoming_data_queue)
-    p.setDelegate(my_delegate)
-
-    svc = p.getServiceByUUID(service_uuid)
-    ch = svc.getCharacteristics(char_uuid)[0]
-
-    # Enable notifications for the characteristics
-    # Without this nothing happens when device sends data to PC...
-    p.writeCharacteristic(ch.valHandle + 1, b"\x01\x00")
-    #
     # =============================================================================
 
     key_manager = keyboard_manager.KeyboardManager()
@@ -137,20 +108,20 @@ def main():
                 cmd = keyboard_manager.key_translator(key)
                 if cmd:
                     print(cmd)
-                    ch.write(cmd)
+                    robot_conn.write(cmd)
         except keyboard_manager.KeyboardManagerEnded:
             break
 
         # TODO: reconnect when connection lost
         # TODO: waitForNotifications can also throw
-        p.waitForNotifications(0.001)
+        robot_conn.wait_for_notifications(0.001)
         try:
             data = incoming_data_queue.get_nowait()
             input_data_processor.process_incoming_data(data)
         except queue.Empty:
             pass
 
-    p.disconnect()
+    robot_conn.disconnect()
     # Should be stopped by now, but just in case
     key_manager.stop()
     # close csv file
