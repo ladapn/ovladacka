@@ -85,12 +85,7 @@ def main():
 
     incoming_data_queue = queue.Queue()
     robot_conn = connection.btle_connection.BTLEConnection(address, service_uuid, char_uuid, incoming_data_queue)
-
-    print(f'Attempting to connect to {address}')
-
-    robot_conn.connect()
-
-    print('Connected Successfully')
+    # robot_conn = connection.simulated_connection.SimConnection(incoming_data_queue)
 
     input_data_processor = InputDataProcessor()
 
@@ -100,28 +95,27 @@ def main():
     key_manager.start()
 
     # TODO with key_manager, input_data_processor, BTLE_comm...
-    while True:
+    with robot_conn:
+        print(f'Connected Successfully to {address}')
+        while True:
 
-        try:
-            key = key_manager.get_key_nowait()
-            if key:
-                cmd = keyboard_manager.key_translator(key)
-                if cmd:
-                    print(cmd)
-                    robot_conn.write(cmd)
-        except keyboard_manager.KeyboardManagerEnded:
-            break
+            try:
+                key = key_manager.get_key_nowait()
+                if key:
+                    cmd = keyboard_manager.key_translator(key)
+                    if cmd:
+                        print(cmd)
+                        robot_conn.write(cmd)
+            except keyboard_manager.KeyboardManagerEnded:
+                break
 
-        # TODO: reconnect when connection lost
-        # TODO: waitForNotifications can also throw
-        robot_conn.wait_for_notifications(0.001)
-        try:
-            data = incoming_data_queue.get_nowait()
-            input_data_processor.process_incoming_data(data)
-        except queue.Empty:
-            pass
+            robot_conn.wait_for_notifications(0.001)
+            try:
+                data = incoming_data_queue.get_nowait()
+                input_data_processor.process_incoming_data(data)
+            except queue.Empty:
+                pass
 
-    robot_conn.disconnect()
     # Should be stopped by now, but just in case
     key_manager.stop()
     # close csv file
