@@ -51,8 +51,7 @@ def main():
     key_manager = keyboard_manager.KeyboardManager()
 
     # TODO with key_manager, input_data_processor, BTLE_comm...
-    with robot_conn:
-        key_manager.start()
+    with robot_conn, key_manager:
         while True:
 
             try:
@@ -73,8 +72,6 @@ def main():
             except queue.Empty:
                 pass
 
-    # Should be stopped by now, but just in case
-    key_manager.stop()
     # close csv file
     in_data_writer.close()
 
