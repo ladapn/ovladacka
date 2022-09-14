@@ -1,27 +1,10 @@
 import packet_parser
 
 
-class PacketProcessor:
-    def __init__(self, parser, packet_len):
-        self.parser = parser
-        self.packet_len = packet_len
-
-
 class InputDataProcessor:
-    def __init__(self):
+    def __init__(self, packet_definition):
         self.leftovers = None
-
-        self.packet_processors = {80: PacketProcessor(parser=packet_parser.StatusPacketParser(),
-
-                                                      packet_len=16)}
-
-        usnd_packet_ids = [100, 101, 102, 103]
-        usnd_processor = PacketProcessor(parser=packet_parser.UsndPacketParser(),
-
-                                         packet_len=10)
-
-        for packet_id in usnd_packet_ids:
-            self.packet_processors[packet_id] = usnd_processor
+        self.packet_definition = packet_definition
 
     def process_incoming_data(self, data):
         print("data received")
@@ -42,24 +25,26 @@ class InputDataProcessor:
         idx = 0
         while idx < len(data):
             packet_id = data[idx]
-            if packet_id in self.packet_processors:
-                packet_processor = self.packet_processors[packet_id]
-                packet = data[idx: idx + packet_processor.packet_len]
+            if packet_id in self.packet_definition:
+                packet_len = self.packet_definition[packet_id]['length']
+                packet = data[idx: idx + packet_len]
 
                 # Is the packet contained in this data, or does it continue in the next burst?
-                if idx + packet_processor.packet_len > len(data):
+                if idx + packet_len > len(data):
                     self.leftovers = data[idx:]
                     break
 
                 try:
-                    packet_data = packet_processor.parser.parse_raw_data(packet_id, packet)
+                    packet_data = packet_parser.parse_raw_data(packet_id,
+                                                               self.packet_definition[packet_id]['structure'],
+                                                               packet)
                     processed_data.append((packet_id, packet_data))
                 except packet_parser.ParserBadChecksum:
                     print(f'Broken checksum found, Packet ID: {packet_id}')
                 except packet_parser.ParserException as ex:
                     print(f'something bad has happened while processing data of packet ID {packet_id}: {ex}')
 
-                idx = idx + packet_processor.packet_len - 1
+                idx = idx + packet_len - 1
 
             idx = idx + 1
 

@@ -32,7 +32,6 @@ def read_packet_definition(definition_path):
 
 
 def main():
-    read_packet_definition('packet_definition.json')
 
     incoming_data_queue = queue.Queue()
     connection_configuration = read_configuration('connection.json')
@@ -42,8 +41,8 @@ def main():
                                                            incoming_data_queue)
     # robot_conn = connection.simulated_connection.SimConnection(incoming_data_queue)
 
-    packet_definition = read_packet_definition()
-    input_data_processor = incoming_data_processor.InputDataProcessor()
+    packet_definition = read_packet_definition('packet_definition.json')
+    input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 
     in_data_writer = input_data_writer.InputDataWriter(packet_definition)
 
