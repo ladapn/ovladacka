@@ -1,6 +1,7 @@
 import keyboard_manager
 import connection.btle_connection
 import incoming_data_processor
+import input_data_writer
 import queue
 import json
 
@@ -12,7 +13,26 @@ def read_configuration(config_path):
     return config
 
 
+def read_packet_definition(definition_path):
+    with open(definition_path, 'r') as definition_file:
+        definitions = json.load(definition_file)
+
+    # TODO: perform input validity checks
+    id_to_packet_info = {}
+    for d in definitions:
+        if not isinstance(d['id'], list):
+            ids = [d['id']]
+        else:
+            ids = d['id']
+
+        for packet_id in ids:
+            id_to_packet_info[packet_id] = {key: d[key] for key in d if key != 'id'}
+
+    return id_to_packet_info
+
+
 def main():
+    read_packet_definition('packet_definition.json')
 
     incoming_data_queue = queue.Queue()
     connection_configuration = read_configuration('connection.json')
@@ -22,7 +42,10 @@ def main():
                                                            incoming_data_queue)
     # robot_conn = connection.simulated_connection.SimConnection(incoming_data_queue)
 
+    packet_definition = read_packet_definition()
     input_data_processor = incoming_data_processor.InputDataProcessor()
+
+    in_data_writer = input_data_writer.InputDataWriter(packet_definition)
 
     # =============================================================================
 
@@ -46,14 +69,15 @@ def main():
             robot_conn.wait_for_notifications(0.001)
             try:
                 data = incoming_data_queue.get_nowait()
-                input_data_processor.process_incoming_data(data)
+                processed_data = input_data_processor.process_incoming_data(data)
+                in_data_writer.write(processed_data)
             except queue.Empty:
                 pass
 
     # Should be stopped by now, but just in case
     key_manager.stop()
     # close csv file
-    input_data_processor.close()
+    in_data_writer.close()
 
     print('Disconnected... Good Bye!')
 
