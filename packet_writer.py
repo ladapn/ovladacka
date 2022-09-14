@@ -46,9 +46,8 @@ class USNDPacketWriter(PacketWriter):
         data_frame = pd.DataFrame(self.data_frame_dict)
         data_frame = data_frame.transpose()
         # Add a column containing minimum of the other columns
-        # data_frame['Min'] = data_frame[['101', '102', '103']].min(axis=1)
         data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
-        data_frame['Min'] = data_frame.min(axis=1)
+        data_frame['right_min'] = data_frame[['right_front', 'right_center', 'right_back']].min(axis=1)
         data_frame.to_csv(self.path / (self.time_string + '_pd.csv'))
 
 
