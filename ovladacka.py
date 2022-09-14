@@ -27,10 +27,10 @@ def main():
     # =============================================================================
 
     key_manager = keyboard_manager.KeyboardManager()
-    key_manager.start()
 
     # TODO with key_manager, input_data_processor, BTLE_comm...
     with robot_conn:
+        key_manager.start()
         while True:
 
             try:
