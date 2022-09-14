@@ -3,6 +3,7 @@ import connection.btle_connection
 import packet_writer
 import packet_parser
 import queue
+import json
 
 
 class PacketProcessor:
@@ -77,14 +78,21 @@ class InputDataProcessor:
             idx = idx + 1
 
 
+def read_configuration(config_path):
+    with open(config_path, 'r') as config_file:
+        config = json.load(config_file)
+
+    return config
+
+
 def main():
 
-    address = '00:13:AA:00:12:27'
-    service_uuid = '0000ffe0-0000-1000-8000-00805f9b34fb'
-    char_uuid = '0000ffe1-0000-1000-8000-00805f9b34fb'
-
     incoming_data_queue = queue.Queue()
-    robot_conn = connection.btle_connection.BTLEConnection(address, service_uuid, char_uuid, incoming_data_queue)
+    connection_configuration = read_configuration('connection.json')
+    robot_conn = connection.btle_connection.BTLEConnection(connection_configuration['BTLE']['address'],
+                                                           connection_configuration['BTLE']['service_uuid'],
+                                                           connection_configuration['BTLE']['char_uuid'],
+                                                           incoming_data_queue)
     # robot_conn = connection.simulated_connection.SimConnection(incoming_data_queue)
 
     input_data_processor = InputDataProcessor()
@@ -96,7 +104,6 @@ def main():
 
     # TODO with key_manager, input_data_processor, BTLE_comm...
     with robot_conn:
-        print(f'Connected Successfully to {address}')
         while True:
 
             try:
