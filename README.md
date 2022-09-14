@@ -1,26 +1,29 @@
-00:13:AA:00:12:27
+# ovladacka
+ovladacka is a simple tool to control [wallckr](https://github.com/ladapn/wallckr) mobile robot and to receive, process and store data the robot sends back. 
 
-Primary Service (Handle 0xcf71)
-	/org/bluez/hci0/dev_00_13_AA_00_12_27/service0023
-	0000ffe0-0000-1000-8000-00805f9b34fb
-	Unknown
+## Getting Started
+### Clone this repository
+`$ git clone TBD`
+### Install dependencies
+`$ pip install -r requirements.txt`
+### Configure robot connection
+NOTE: if you wish to work only in simulation mode, you can skip this part
+Create a copy of `connection.json.TEMPLATE` file and delete the `.TEMPLATE` suffix from the name of your copy. 
+Open your copy and fill in the information about the required connection type. 
+### Run it
+#### Normal mode 
+#### Simulation mode
 
-Characteristic (Handle 0xcf71)
-	/org/bluez/hci0/dev_00_13_AA_00_12_27/service0023/char0024
-	0000ffe1-0000-1000-8000-00805f9b34fb
-	Unknown
+## Deta exchange with robot
+### Data sent from ovladacka to robot
+### Data sent from robot to ovladacka
 
-bluepy's handling of incomming notifications is not much asynchronous, it just 
-checks for notification during any bluepy call (read, write, waitfornotifications...)
+## Known issues
+### Wayland issues
+ovladacka uses pynput package to capture keyboard and pynput does not seem to work on Wayland
 
+Workaround: use Xorg instead 
 
----
+## Contributing
 
-connect 00:13:AA:00:12:27
-menu gatt
-select-attribute /org/bluez/hci0/dev_00_13_AA_00_12_27/service0023/char0024
-write 64
-
-
-
-
+## License
