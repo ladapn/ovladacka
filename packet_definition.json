@@ -1,0 +1,15 @@
+[
+  {
+    "id" : [100, 101, 102, 103],
+    "structure" : "<BIIB",
+    "length" : 10,
+    "writer" : "ultrasound"
+  },
+  {
+    "id" : [80],
+    "structure" : "<BIIHHHB",
+    "length" : 16,
+    "header" : ["id", "tick_ms", "commit_id", "battery_v_adc", "total_i_adc", "motor_i_adc", "crc"],
+    "writer" : "generic"
+  }
+]
