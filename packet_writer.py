@@ -9,7 +9,7 @@ class PacketWriter(ABC):
     def __init__(self):
         self.time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
         self.path = pathlib.Path('robot_outputs/' + self.time_string)
-        self.path.mkdir(exist_ok=True)
+        self.path.mkdir(parents=True, exist_ok=True)
 
     @abstractmethod
     def write_packet(self, packet_id, packet_data):
