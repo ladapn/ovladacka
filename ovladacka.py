@@ -1,7 +1,7 @@
 import keyboard_manager
 import connection.btle_connection
 import incoming_data_processor
-import input_data_writer
+from data_writers import input_data_writer
 import queue
 import json
 
@@ -45,8 +45,6 @@ def main():
     input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 
     in_data_writer = input_data_writer.InputDataWriter(packet_definition, input_data_writer.prepare_output_folder())
-
-    # =============================================================================
 
     key_manager = keyboard_manager.KeyboardManager()
 

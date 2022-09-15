@@ -1,4 +1,4 @@
-import packet_writer
+from data_writers import packet_writer
 import time
 import pathlib
 
