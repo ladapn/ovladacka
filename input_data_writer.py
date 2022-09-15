@@ -34,3 +34,9 @@ class InputDataWriter:
     def close(self):
         for packet_id in self.id_to_writer:
             self.id_to_writer[packet_id].close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

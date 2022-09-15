@@ -50,8 +50,7 @@ def main():
 
     key_manager = keyboard_manager.KeyboardManager()
 
-    # TODO with key_manager, input_data_processor, BTLE_comm...
-    with robot_conn, key_manager:
+    with robot_conn, key_manager, in_data_writer:
         while True:
 
             try:
@@ -68,9 +67,6 @@ def main():
                 data = incoming_data_queue.get_nowait()
                 processed_data = input_data_processor.process_incoming_data(data)
                 in_data_writer.write(processed_data)
-
-    # close csv file
-    in_data_writer.close()
 
     print('Disconnected... Good Bye!')
 
