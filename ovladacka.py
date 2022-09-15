@@ -44,7 +44,7 @@ def main():
     packet_definition = read_packet_definition('packet_definition.json')
     input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 
-    in_data_writer = input_data_writer.InputDataWriter(packet_definition)
+    in_data_writer = input_data_writer.InputDataWriter(packet_definition, input_data_writer.prepare_output_folder())
 
     # =============================================================================
 
