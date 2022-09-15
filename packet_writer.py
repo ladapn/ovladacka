@@ -1,16 +1,9 @@
-import time
 import csv
-import pathlib
 import pandas as pd
 from abc import ABC, abstractmethod
 
 
 class PacketWriter(ABC):
-    def __init__(self):
-        self.time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
-        self.path = pathlib.Path('robot_outputs/' + self.time_string)
-        self.path.mkdir(parents=True, exist_ok=True)
-
     @abstractmethod
     def write_packet(self, packet_id, packet_data):
         pass
@@ -21,11 +14,11 @@ class PacketWriter(ABC):
 
 
 class USNDPacketWriter(PacketWriter):
-    def __init__(self, usnd_packet_ids):
-        super().__init__()
+    def __init__(self, path, usnd_packet_ids):
         self.data_frame_dict = {}
         self.usnd_packet_ids = usnd_packet_ids
         self.closed = False
+        self.path = path
 
     def write_packet(self, packet_id, packet_data):
         # TODO: work directly with DataFrame
@@ -44,14 +37,13 @@ class USNDPacketWriter(PacketWriter):
             # Add a column containing minimum of the other columns
             data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
             data_frame['right_min'] = data_frame[['right_front', 'right_center', 'right_back']].min(axis=1)
-            data_frame.to_csv(self.path / (self.time_string + '_pd.csv'))
+            data_frame.to_csv(self.path + '_pd.csv')
             self.closed = True
 
 
 class StatusPacketWriter(PacketWriter):
-    def __init__(self):
-        super().__init__()
-        self.status_file = open(self.path / (self.time_string + '_stat.csv'), 'w')
+    def __init__(self, path):
+        self.status_file = open(path + '_stat.csv', 'w')
         self.status_csv = csv.writer(self.status_file)
         self.status_csv.writerow(
             ['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc'])
