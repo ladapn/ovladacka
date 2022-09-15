@@ -77,8 +77,9 @@ class BTLEConnection(RobotConnection):
         Wait for notification that there are new data from the connected device available. The method blocks until
         new data is available, or until maximal waiting time elapses
         :param float timeout: maximal waiting time in seconds
+        :return True if data received, False in case of timeout
         """
-        self.peripheral.waitForNotifications(timeout) # FIXME returns True/False
+        return self.peripheral.waitForNotifications(timeout)
 
     def write(self, data):
         """

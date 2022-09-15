@@ -64,13 +64,10 @@ def main():
             except keyboard_manager.KeyboardManagerEnded:
                 break
 
-            robot_conn.wait_for_notifications(0.001)
-            try:
+            if robot_conn.wait_for_notifications(0.001):
                 data = incoming_data_queue.get_nowait()
                 processed_data = input_data_processor.process_incoming_data(data)
                 in_data_writer.write(processed_data)
-            except queue.Empty:
-                pass
 
     # close csv file
     in_data_writer.close()
