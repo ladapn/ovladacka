@@ -34,10 +34,11 @@ class USNDPacketWriter(PacketWriter):
         if not self.closed:
             data_frame = pd.DataFrame(self.data_frame_dict)
             data_frame = data_frame.transpose()
+            data_frame.index.name = 'tick_ms'
             # Add a column containing minimum of the other columns
             data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
             data_frame['right_min'] = data_frame[['right_front', 'right_center', 'right_back']].min(axis=1)
-            data_frame.to_csv(self.path + '_pd.csv')
+            data_frame.to_csv(self.path + '_usnd.csv')
             self.closed = True
 
 
