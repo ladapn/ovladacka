@@ -1,4 +1,4 @@
-import packet_parser
+from data_parsers import packet_parser
 
 
 class InputDataProcessor:

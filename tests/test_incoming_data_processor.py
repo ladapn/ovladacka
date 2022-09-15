@@ -1,7 +1,7 @@
 import io
 import unittest
 import unittest.mock
-import incoming_data_processor
+from data_parsers import incoming_data_processor
 
 
 class InputDataProcessorTestCase(unittest.TestCase):
@@ -51,7 +51,6 @@ class InputDataProcessorTestCase(unittest.TestCase):
         processed_data = input_data_processor. \
             process_incoming_data(data=b'd\xc3\x89\x00\x00u\x00\x00\x006')
         self.assertTrue('Broken checksum found, Packet ID: 100' in mock_stdout.getvalue())
-
 
 
 if __name__ == '__main__':

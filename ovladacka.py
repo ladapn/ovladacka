@@ -1,6 +1,6 @@
 import keyboard_manager
-import connection.btle_connection
-import incoming_data_processor
+from connection import btle_connection
+from data_parsers import incoming_data_processor
 from data_writers import input_data_writer
 import queue
 import json
@@ -35,10 +35,10 @@ def main():
 
     incoming_data_queue = queue.Queue()
     connection_configuration = read_configuration('connection.json')
-    robot_conn = connection.btle_connection.BTLEConnection(connection_configuration['BTLE']['address'],
-                                                           connection_configuration['BTLE']['service_uuid'],
-                                                           connection_configuration['BTLE']['char_uuid'],
-                                                           incoming_data_queue)
+    robot_conn = btle_connection.BTLEConnection(connection_configuration['BTLE']['address'],
+                                                connection_configuration['BTLE']['service_uuid'],
+                                                connection_configuration['BTLE']['char_uuid'],
+                                                incoming_data_queue)
     # robot_conn = connection.simulated_connection.SimConnection(incoming_data_queue)
 
     packet_definition = read_packet_definition('packet_definition.json')

@@ -1,5 +1,5 @@
 import unittest
-import packet_parser
+from data_parsers import packet_parser
 
 
 class PacketParserTestCase(unittest.TestCase):
