@@ -9,7 +9,9 @@ class PacketWriterTestCase(unittest.TestCase):
                           call('80,433439,178771540,117,0,0,142\r\n')]
 
         with patch('packet_writer.open', mock_open()) as mocked_file:
-            status_writer = packet_writer.StatusPacketWriter('/mock/path')
+            header = ['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc']
+            status_writer = packet_writer.StatusPacketWriter('/mock/path', header)
+
             status_writer.write_packet(80, [80, 433439, 178771540, 117, 0, 0, 142])
             status_writer.close()
 

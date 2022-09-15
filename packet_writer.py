@@ -43,11 +43,10 @@ class USNDPacketWriter(PacketWriter):
 
 
 class StatusPacketWriter(PacketWriter):
-    def __init__(self, path):
+    def __init__(self, path, header):
         self.status_file = open(path + '_stat.csv', 'w')
         self.status_csv = csv.writer(self.status_file)
-        self.status_csv.writerow(
-            ['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc', 'motor_i_adc', 'crc'])
+        self.status_csv.writerow(header)
 
     def write_packet(self, packet_id, packet_data):
         self.status_csv.writerow(packet_data)

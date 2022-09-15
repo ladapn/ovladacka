@@ -7,6 +7,8 @@ class InputDataWriterTestCase(unittest.TestCase):
     def test_write_status(self):
         packet_definition = {80: {"structure": "<BIIHHHB",
                                   "length": 16,
+                                  "header": ['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc',
+                                             'motor_i_adc', 'crc'],
                                   "writer": "generic"}
                              }
         in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/test_status_file')
