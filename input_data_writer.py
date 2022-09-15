@@ -16,7 +16,7 @@ class InputDataWriter:
 
     def write(self, packets):
         for packet_id, packet_data in packets:
-            self.id_to_writer[packet_id].write(packet_data)
+            self.id_to_writer[packet_id].write_packet(packet_id, packet_data)
 
     def close(self):
         for packet_id in self.id_to_writer:
