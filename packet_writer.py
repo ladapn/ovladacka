@@ -38,13 +38,13 @@ class USNDPacketWriter(PacketWriter):
             # Add a column containing minimum of the other columns
             data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
             data_frame['right_min'] = data_frame[['right_front', 'right_center', 'right_back']].min(axis=1)
-            data_frame.to_csv(self.path + '_usnd.csv')
+            data_frame.to_csv(self.path + '.csv')
             self.closed = True
 
 
 class StatusPacketWriter(PacketWriter):
     def __init__(self, path, header):
-        self.status_file = open(path + '_stat.csv', 'w')
+        self.status_file = open(path + '.csv', 'w')
         self.status_csv = csv.writer(self.status_file)
         self.status_csv.writerow(header)
 

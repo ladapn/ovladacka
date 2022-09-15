@@ -12,17 +12,22 @@ def prepare_output_folder(master_folder='robot_outputs'):
 
 
 class InputDataWriter:
-    def __init__(self, packet_info, path): # plus header...
+    def __init__(self, packet_info, path):
         self.id_to_writer = {}
 
         # fixme -> shouldn't be nescessary...
         usnd_packet_ids = [100, 101, 102, 103]
-        usnd_writer = packet_writer.USNDPacketWriter(path, usnd_packet_ids)
+        usnd_writer = None
 
         for packet_id in packet_info:
             if packet_info[packet_id]['writer'] == 'generic':
-                self.id_to_writer[packet_id] = packet_writer.StatusPacketWriter(path, packet_info[packet_id]['header'])
+                self.id_to_writer[packet_id] = packet_writer.StatusPacketWriter(path + '_' + packet_info[packet_id]['name'],
+                                                                                packet_info[packet_id]['header'])
             elif packet_info[packet_id]['writer'] == 'ultrasound':
+                if not usnd_writer:
+                    usnd_writer = packet_writer.USNDPacketWriter(path + '_' + packet_info[packet_id]['name'],
+                                                                 usnd_packet_ids)
+
                 self.id_to_writer[packet_id] = usnd_writer
 
         # FIXME vytvor primo instanci podle jmena

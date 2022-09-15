@@ -9,13 +9,14 @@ class InputDataWriterTestCase(unittest.TestCase):
                                   "length": 16,
                                   "header": ['id', 'tick_ms', 'commit_id', 'battery_v_adc', 'total_i_adc',
                                              'motor_i_adc', 'crc'],
-                                  "writer": "generic"}
+                                  "writer": "generic",
+                                  "name": "status"}
                              }
         in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/test_status_file')
         in_writer.write([(80, [80, 433439, 178771540, 117, 0, 0, 142])])
         in_writer.close()
 
-        test_file_name = 'tests/test_status_file' + '_stat.csv'
+        test_file_name = 'tests/test_status_file' + '_' + packet_definition[80]['name'] + '.csv'
         with open(test_file_name, 'r') as test_file:
             actual = test_file.readlines()
 
@@ -29,19 +30,23 @@ class InputDataWriterTestCase(unittest.TestCase):
     def test_write_ultrasound(self):
         packet_definition = {100: {"structure": "<BIIB",
                                    "length": 10,
-                                   "writer": "ultrasound"},
+                                   "writer": "ultrasound",
+                                   "name": "ultrasound"},
                              101: {"structure": "<BIIB",
                                    "length": 10,
-                                   "writer": "ultrasound"},
+                                   "writer": "ultrasound",
+                                   "name": "ultrasound"},
                              102: {"structure": "<BIIB",
                                    "length": 10,
-                                   "writer": "ultrasound"},
+                                   "writer": "ultrasound",
+                                   "name": "ultrasound"},
                              103: {"structure": "<BIIB",
                                    "length": 10,
-                                   "writer": "ultrasound"},
+                                   "writer": "ultrasound",
+                                   "name": "ultrasound"},
                              }
 
-        in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/test_file_usnd')
+        in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/test_file')
         in_writer.write([(100, [100, 35267, 117, 91]),
                          (101, [101, 35267, 118, 91]),
                          (102, [102, 35267, 119, 91]),
@@ -49,7 +54,7 @@ class InputDataWriterTestCase(unittest.TestCase):
                         )
         in_writer.close()
 
-        test_file_name = 'tests/test_file_usnd' + '_usnd.csv'
+        test_file_name = 'tests/test_file_' + packet_definition[100]['name'] + '.csv'
         with open(test_file_name, 'r') as test_file:
             actual = test_file.readlines()
 
