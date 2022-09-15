@@ -23,9 +23,9 @@ class PacketWriter(ABC):
 class USNDPacketWriter(PacketWriter):
     def __init__(self, usnd_packet_ids):
         super().__init__()
-        self.usnd_file = open(self.path / (self.time_string + '.csv'), 'w')
-        self.usnd_writer = csv.writer(self.usnd_file)
-        self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
+        #self.usnd_file = open(self.path / (self.time_string + '.csv'), 'w')
+        #self.usnd_writer = csv.writer(self.usnd_file)
+        #self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         self.data_frame_dict = {}
         self.usnd_packet_ids = usnd_packet_ids
 
@@ -39,10 +39,10 @@ class USNDPacketWriter(PacketWriter):
             self.data_frame_dict[timestamp] = dict.fromkeys(self.usnd_packet_ids, None)
             self.data_frame_dict[timestamp][packet_id] = measurement
 
-        self.usnd_writer.writerow(packet_data)
+        # self.usnd_writer.writerow(packet_data)
 
     def close(self):
-        self.usnd_file.close()
+        # self.usnd_file.close()
         data_frame = pd.DataFrame(self.data_frame_dict)
         data_frame = data_frame.transpose()
         # Add a column containing minimum of the other columns
