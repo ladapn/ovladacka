@@ -23,11 +23,9 @@ class PacketWriter(ABC):
 class USNDPacketWriter(PacketWriter):
     def __init__(self, usnd_packet_ids):
         super().__init__()
-        #self.usnd_file = open(self.path / (self.time_string + '.csv'), 'w')
-        #self.usnd_writer = csv.writer(self.usnd_file)
-        #self.usnd_writer.writerow(['id', 'tick_ms', 'distance_cm', 'crc'])
         self.data_frame_dict = {}
         self.usnd_packet_ids = usnd_packet_ids
+        self.closed = False
 
     def write_packet(self, packet_id, packet_data):
         # TODO: work directly with DataFrame
@@ -39,16 +37,15 @@ class USNDPacketWriter(PacketWriter):
             self.data_frame_dict[timestamp] = dict.fromkeys(self.usnd_packet_ids, None)
             self.data_frame_dict[timestamp][packet_id] = measurement
 
-        # self.usnd_writer.writerow(packet_data)
-
     def close(self):
-        # self.usnd_file.close()
-        data_frame = pd.DataFrame(self.data_frame_dict)
-        data_frame = data_frame.transpose()
-        # Add a column containing minimum of the other columns
-        data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
-        data_frame['right_min'] = data_frame[['right_front', 'right_center', 'right_back']].min(axis=1)
-        data_frame.to_csv(self.path / (self.time_string + '_pd.csv'))
+        if not self.closed:
+            data_frame = pd.DataFrame(self.data_frame_dict)
+            data_frame = data_frame.transpose()
+            # Add a column containing minimum of the other columns
+            data_frame.columns = ['front', 'right_front', 'right_center', 'right_back']
+            data_frame['right_min'] = data_frame[['right_front', 'right_center', 'right_back']].min(axis=1)
+            data_frame.to_csv(self.path / (self.time_string + '_pd.csv'))
+            self.closed = True
 
 
 class StatusPacketWriter(PacketWriter):
