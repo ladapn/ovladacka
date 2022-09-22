@@ -35,13 +35,17 @@ Other keys are ignored.
 ### Data sent from robot to ovladacka
 Robot sends asynchronously various data such as sensor measurements, information about its status etc. The data is 
 divided into simple packets. These packets are received, decoded and writen to files. Only packets defined in 
-[packet_definition.json](packet_definition.json) are considered. 
+[packet_definition.json](packet_definition.json) are considered. More information about this file can be found 
+[here](doc/packet_definition.md). 
 
 ## Known issues
 ### Wayland issues
 ovladacka uses pynput package to capture keyboard and pynput does not seem to work on Wayland
 
 Workaround: use Xorg instead 
+
+## TODO
+- implement simulation mode so that ovladacka can be run without connection to the actual robot
 
 ## Contributing
 In case you would like to fix or improve anything, feel free to create a pull request. 
