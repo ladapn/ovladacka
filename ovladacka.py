@@ -67,15 +67,11 @@ def main():
 
     with robot_conn, key_manager, in_data_writer:
         while True:
-
             try:
-                key = key_manager.get_key_nowait()
-                if key:
-                    cmd = keyboard_manager.key_translator(key)
-                    if cmd:
-                        print(cmd)
-                        robot_conn.write(cmd)
-            except keyboard_manager.KeyboardManagerEnded:
+                cmd = keyboard_manager.key_to_robot_command(key_manager.get_key_nowait())
+                if cmd:
+                    robot_conn.write(cmd)
+            except keyboard_manager.TerminationRequested:
                 break
 
             if robot_conn.wait_for_notifications(0.001):

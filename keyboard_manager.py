@@ -2,7 +2,7 @@ from pynput.keyboard import Key, Listener
 import queue
 
 
-def key_translator(key):
+def key_to_robot_command(key):
     return {
         Key.up: b'A',
         Key.down: b'C',
@@ -12,7 +12,7 @@ def key_translator(key):
     }.get(key, None)
 
 
-class KeyboardManagerEnded(Exception):
+class TerminationRequested(Exception):
     pass
 
 
@@ -42,7 +42,7 @@ class KeyboardManager:
         try:
             key = self.key_queue.get_nowait()
             if key == Key.esc:
-                raise KeyboardManagerEnded
+                raise TerminationRequested
         except queue.Empty:
             key = None
         return key
