@@ -54,6 +54,10 @@ def main():
                                                 incoming_data_queue)
     # robot_conn = connection.simulated_connection.SimConnection(incoming_data_queue)
 
+    if not robot_conn.connect():
+        print('Cannot connect to robot, exiting...')
+        return
+
     packet_definition = read_packet_definition('packet_definition.json')
     input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 

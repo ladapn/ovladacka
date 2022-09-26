@@ -11,6 +11,7 @@ class RobotConnection(ABC):
         Initiate connection to robot
         :param int number_of_retries: Total number of attempts to connect, if connection cannot be established,
         defaults to 3
+        :return True if connection established, False if connection cannot be established
         """
         pass
 
@@ -41,9 +42,8 @@ class RobotConnection(ABC):
 
     def __enter__(self):
         """
-        If context manager is entered, initiate robot connection
+        If context manager is entered, do nothing
         """
-        self.connect()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

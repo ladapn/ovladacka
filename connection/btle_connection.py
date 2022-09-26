@@ -52,8 +52,10 @@ class BTLEConnection(RobotConnection):
         Connect to peripheral and enable its notifications
         :param int number_of_retries: Total number of attempts to connect, if connection cannot be established,
         defaults to 3
+        :return True if connection established, False if connection cannot be established
         """
         for tries in range(number_of_retries):
+            print(f'Trying to connect to peripheral {self.address}...')
             try:
                 self.peripheral = btle.Peripheral(self.address)
                 break
@@ -61,7 +63,7 @@ class BTLEConnection(RobotConnection):
                 print(e)
                 if tries == (number_of_retries - 1):
                     print('Giving up')
-                    exit()  # FIXME throw exception instead -> and update docstring :raises
+                    return False
                 print('Trying again...')
 
         self.peripheral.setDelegate(self.delegate)
@@ -71,6 +73,8 @@ class BTLEConnection(RobotConnection):
         # Enable notifications for the characteristics
         # Without this nothing happens when device sends data to PC...
         self.peripheral.writeCharacteristic(self.characteristics.valHandle + 1, b"\x01\x00")
+
+        return True
 
     def wait_for_notifications(self, timeout):
         """
