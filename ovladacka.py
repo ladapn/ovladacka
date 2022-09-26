@@ -6,9 +6,17 @@ import queue
 import json
 
 
-def read_configuration(config_path):
-    with open(config_path, 'r') as config_file:
-        config = json.load(config_file)
+def read_connection_configuration(config_path):
+    config = None
+
+    try:
+        config_file = open(config_path, 'r')
+    except FileNotFoundError:
+        print('Connection configuration file "connection.json" was not found. Please create "connection.json" based on'
+              ' provided template "connection.json.TEMPLATE"')
+    else:
+        with config_file:
+            config = json.load(config_file)
 
     return config
 
@@ -34,7 +42,12 @@ def read_packet_definition(definition_path):
 def main():
 
     incoming_data_queue = queue.Queue()
-    connection_configuration = read_configuration('connection.json')
+    connection_configuration = read_connection_configuration('connection.json')
+
+    if not connection_configuration:
+        print('Cannot continue without connection configuration, exiting...')
+        return
+
     robot_conn = btle_connection.BTLEConnection(connection_configuration['BTLE']['address'],
                                                 connection_configuration['BTLE']['service_uuid'],
                                                 connection_configuration['BTLE']['char_uuid'],
