@@ -2,6 +2,11 @@ import json
 
 
 def read_connection_configuration(config_path):
+    """
+    Read Bluetooth Low Energy (BTLE) connection information from given config file in json format
+    :param config_path: configuration file name
+    :return: dictionary holding configuration data, None if file cannot be read 
+    """
     config = None
 
     try:
