@@ -1,30 +1,14 @@
 import keyboard_manager
-from connection import btle_connection
+from connection import btle_connection, connection_config_reader
 from data_parsers import incoming_data_processor,  packet_definition_reader
 from data_writers import input_data_writer
 import queue
-import json
-
-
-def read_connection_configuration(config_path):
-    config = None
-
-    try:
-        config_file = open(config_path, 'r')
-    except FileNotFoundError:
-        print('Connection configuration file "connection.json" was not found. Please create "connection.json" based on'
-              ' provided template "connection.json.TEMPLATE"')
-    else:
-        with config_file:
-            config = json.load(config_file)
-
-    return config
 
 
 def main():
 
     incoming_data_queue = queue.Queue()
-    connection_configuration = read_connection_configuration('connection.json')
+    connection_configuration = connection_config_reader.read_connection_configuration('connection.json')
 
     if not connection_configuration:
         print('Cannot continue without connection configuration, exiting...')
