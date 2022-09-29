@@ -1,6 +1,6 @@
 import keyboard_manager
 from connection import btle_connection
-from data_parsers import incoming_data_processor
+from data_parsers import incoming_data_processor,  packet_definition_reader
 from data_writers import input_data_writer
 import queue
 import json
@@ -19,24 +19,6 @@ def read_connection_configuration(config_path):
             config = json.load(config_file)
 
     return config
-
-
-def read_packet_definition(definition_path):
-    with open(definition_path, 'r') as definition_file:
-        definitions = json.load(definition_file)
-
-    # TODO: perform input validity checks
-    id_to_packet_info = {}
-    for d in definitions:
-        if not isinstance(d['id'], list):
-            ids = [d['id']]
-        else:
-            ids = d['id']
-
-        for packet_id in ids:
-            id_to_packet_info[packet_id] = {key: d[key] for key in d if key != 'id'}
-
-    return id_to_packet_info
 
 
 def main():
@@ -58,7 +40,7 @@ def main():
         print('Cannot connect to robot, exiting...')
         return
 
-    packet_definition = read_packet_definition('packet_definition.json')
+    packet_definition = packet_definition_reader.read_packet_definition('packet_definition.json')
     input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 
     in_data_writer = input_data_writer.InputDataWriter(packet_definition, input_data_writer.prepare_output_folder())
