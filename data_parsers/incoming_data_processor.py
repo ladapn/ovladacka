@@ -52,8 +52,7 @@ class InputDataProcessor:
                     break
 
                 try:
-                    packet_data = packet_parser.parse_raw_data(packet_id,
-                                                               self.packet_definition[packet_id]['structure'],
+                    packet_data = packet_parser.parse_raw_data(self.packet_definition[packet_id]['structure'],
                                                                packet)
                     processed_data.append((packet_id, packet_data))
                 except packet_parser.ParserBadChecksum:
