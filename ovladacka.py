@@ -3,6 +3,7 @@ from connection import btle_connection, connection_config_reader
 from data_parsers import incoming_data_processor,  packet_definition_reader
 from data_writers import input_data_writer
 import queue
+import time
 
 
 def main():
@@ -27,7 +28,10 @@ def main():
     packet_definition = packet_definition_reader.read_packet_definition('packet_definition.json')
     input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 
-    in_data_writer = input_data_writer.InputDataWriter(packet_definition, input_data_writer.prepare_output_folder())
+    time_string = time.strftime("%Y-%m-%d-%H-%M-%S")
+    in_data_writer = input_data_writer.InputDataWriter(packet_definition,
+                                                       input_data_writer.prepare_output_folder(time_string),
+                                                       time_string)
 
     key_manager = keyboard_manager.KeyboardManager()
 

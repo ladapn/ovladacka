@@ -12,7 +12,7 @@ class InputDataWriterTestCase(unittest.TestCase):
                                   "writer": "generic",
                                   "name": "status"}
                              }
-        in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/test_status_file')
+        in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/', 'test_status_file')
         in_writer.write([(80, [80, 433439, 178771540, 117, 0, 0, 142])])
         in_writer.close()
 
@@ -46,7 +46,7 @@ class InputDataWriterTestCase(unittest.TestCase):
                                    "name": "ultrasound"},
                              }
 
-        in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/test_file')
+        in_writer = input_data_writer.InputDataWriter(packet_definition, 'tests/', 'test_file')
         in_writer.write([(100, [100, 35267, 117, 91]),
                          (101, [101, 35267, 118, 91]),
                          (102, [102, 35267, 119, 91]),
