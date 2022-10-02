@@ -8,7 +8,8 @@ def key_to_robot_command(key):
         Key.down: b'C',
         Key.right: b'B',
         Key.left: b'D',
-        Key.space: b'E'
+        Key.space: b'E',
+        Key.shift: b'F'
     }.get(key, None)
 
 

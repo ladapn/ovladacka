@@ -21,14 +21,17 @@ Coming soon...
 ### Data sent from ovladacka to robot
 ovladacka captures keyboard and turns certain keystrokes to commands for the robot. 
 
-| Key         | Robot Command                   |
-|-------------|---------------------------------|
-| Up arrow    | Increase speed by one step      |
-| Down arrow  | Decrease speed by one step      |
-| Left arrow  | Turn front wheels one step left |
-| Right arrow | Turn front wheels one step right|
-| Space | Center front wheels |
+| Key         | Robot Command                            |
+|-------------|------------------------------------------|
+| Up arrow    | Increase speed by one step               |
+| Down arrow  | Decrease speed by one step               |
+| Left arrow  | Turn front wheels one step left*         |
+| Right arrow | Turn front wheels one step right*        |
+| Space | Center front wheels*                     |
+| Left Shift | Disable/Enable automatic operation       |
 | Escape | Disconnect from robot and quit ovladacka |
+
+\* will be overwritten when automatic operation enabled.
 
 Other keys are ignored. 
 
