@@ -4,12 +4,12 @@ import queue
 
 def key_to_robot_command(key):
     return {
-        Key.up: b'A',
-        Key.down: b'C',
-        Key.right: b'B',
-        Key.left: b'D',
-        Key.space: b'E',
-        Key.shift: b'F'
+        Key.up: b'a!',
+        Key.down: b'c!',
+        Key.right: b'b!',
+        Key.left: b'd!',
+        Key.space: b'e!',
+        Key.shift: b'f!'
     }.get(key, None)
 
 
