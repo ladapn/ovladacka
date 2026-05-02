@@ -24,6 +24,7 @@ class TerminationRequested(Exception):
 
 class KeyboardWidget(QtWidgets.QWidget):
     key_pressed = QtCore.pyqtSignal(int)
+    window_closed = QtCore.pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -46,6 +47,10 @@ class KeyboardWidget(QtWidgets.QWidget):
         self.key_pressed.emit(key)
         event.accept()
 
+    def closeEvent(self, event):
+        self.window_closed.emit()
+        event.accept()
+
 
 class KeyboardManager:
     def __init__(self):
@@ -59,6 +64,7 @@ class KeyboardManager:
 
         self.widget = KeyboardWidget()
         self.widget.key_pressed.connect(self.on_press)
+        self.widget.window_closed.connect(self.on_window_closed)
 
     def _format_key_text(self, key):
         key_text = QtGui.QKeySequence(key).toString()
@@ -76,6 +82,10 @@ class KeyboardManager:
         key_text = self._format_key_text(key)
         print(f'{key_text} pressed')
         self.key_queue.put(key)
+
+    def on_window_closed(self):
+        print('Window closed, exiting...')
+        self.key_queue.put(TERMINATION_KEY)
 
     def start(self):
         self.widget.show()
