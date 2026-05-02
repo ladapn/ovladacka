@@ -1,17 +1,17 @@
 import queue
 import sys
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 KEY_TO_ROBOT_COMMAND = {
-    QtCore.Qt.Key_Up: b':a!',
-    QtCore.Qt.Key_Down: b':c!',
-    QtCore.Qt.Key_Right: b':b!',
-    QtCore.Qt.Key_Left: b':d!',
-    QtCore.Qt.Key_Space: b':e!',
-    QtCore.Qt.Key_Shift: b':f!'
+    QtCore.Qt.Key.Key_Up: b':a!',
+    QtCore.Qt.Key.Key_Down: b':c!',
+    QtCore.Qt.Key.Key_Right: b':b!',
+    QtCore.Qt.Key.Key_Left: b':d!',
+    QtCore.Qt.Key.Key_Space: b':e!',
+    QtCore.Qt.Key.Key_Shift: b':f!'
 }
-TERMINATION_KEY = QtCore.Qt.Key_Escape
+TERMINATION_KEY = QtCore.Qt.Key.Key_Escape
 
 
 def key_to_robot_command(key):
@@ -30,7 +30,7 @@ class KeyboardWidget(QtWidgets.QWidget):
 
         self.setWindowTitle('Ovladacka Keyboard Control')
         self.setFixedSize(340, 100)
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
 
         label = QtWidgets.QLabel(
             'Focus this window and press Arrow keys, Space, Shift or Escape to exit.',
@@ -60,8 +60,20 @@ class KeyboardManager:
         self.widget = KeyboardWidget()
         self.widget.key_pressed.connect(self.on_press)
 
+    def _format_key_text(self, key):
+        key_text = QtGui.QKeySequence(key).toString()
+
+        # Prevent UnicodeEncodeError when printing certain keys in some environments
+        if key_text:
+            try:
+                key_text.encode('utf-8')
+            except UnicodeEncodeError:
+                key_text = key_text.encode('utf-8', errors='replace').decode('utf-8')
+
+        return key_text
+
     def on_press(self, key):
-        key_text = QtGui.QKeySequence(key).toString() or str(key)
+        key_text = self._format_key_text(key)
         print(f'{key_text} pressed')
         self.key_queue.put(key)
 
@@ -77,7 +89,7 @@ class KeyboardManager:
             self.app.quit()
 
     def get_key_nowait(self):
-        self.app.processEvents(QtCore.QEventLoop.AllEvents)
+        self.app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents)
 
         try:
             key = self.key_queue.get_nowait()
