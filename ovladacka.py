@@ -25,6 +25,8 @@ def main():
         print('Cannot connect to robot, exiting...')
         return
 
+    print('Successfully connected to Robot via BLE')
+
     packet_definition = packet_definition_reader.read_packet_definition('packet_definition.json')
     input_data_processor = incoming_data_processor.InputDataProcessor(packet_definition)
 
