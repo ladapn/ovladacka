@@ -42,6 +42,40 @@ class BTLEConnection(RobotConnection):
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
 
+    def _start_loop(self):
+        """Start the background asyncio loop if it is not already running."""
+        if self.loop and self.loop.is_running():
+            return True
+
+        self.thread = threading.Thread(target=self._run_async_loop, daemon=True)
+        self.thread.start()
+
+        timeout = time.time() + 5
+        while self.loop is None and time.time() < timeout:
+            time.sleep(0.01)
+
+        return self.loop is not None
+
+    def _stop_loop(self):
+        """Stop and clean up the background asyncio loop."""
+        if self.loop:
+            try:
+                self.loop.call_soon_threadsafe(self.loop.stop)
+            except RuntimeError:
+                pass
+
+        if self.thread:
+            self.thread.join(timeout=5)
+
+        if self.loop and not self.loop.is_closed():
+            try:
+                self.loop.close()
+            except RuntimeError:
+                pass
+
+        self.loop = None
+        self.thread = None
+
     def connect(self, number_of_retries=3):
         """
         Connect to peripheral and enable its notifications
@@ -49,14 +83,12 @@ class BTLEConnection(RobotConnection):
         defaults to 3
         :return True if connection established, False if connection cannot be established
         """
-        # Start background asyncio loop
-        self.thread = threading.Thread(target=self._run_async_loop, daemon=True)
-        self.thread.start()
-        
-        # Wait for loop to start
-        timeout = time.time() + 5
-        while self.loop is None and time.time() < timeout:
-            time.sleep(0.01)
+        if self._connected:
+            return True
+
+        if not self._start_loop():
+            print('Failed to start asyncio loop')
+            return False
 
         for tries in range(number_of_retries):
             print(f'Trying to connect to peripheral {self.address}...')
@@ -73,9 +105,10 @@ class BTLEConnection(RobotConnection):
                 print(e)
                 if tries == (number_of_retries - 1):
                     print('Giving up')
-                    return False
+                    break
                 print('Trying again...')
 
+        self._stop_loop()
         return False
 
     async def _connect_async(self):
@@ -86,6 +119,7 @@ class BTLEConnection(RobotConnection):
             await self.client.start_notify(self.char_uuid, self._notification_handler)
             return True
         except Exception as e:
+            self.client = None
             print(f'Connection error: {e}')
             return False
 
@@ -118,7 +152,7 @@ class BTLEConnection(RobotConnection):
 
     def disconnect(self):
         """Disconnects from peripheral"""
-        if self._connected and self.client:
+        if self._connected and self.client and self.loop:
             future = asyncio.run_coroutine_threadsafe(
                 self.client.disconnect(),
                 self.loop
@@ -127,10 +161,8 @@ class BTLEConnection(RobotConnection):
                 future.result(timeout=5)
             except Exception as e:
                 print(f'Disconnect error: {e}')
-            finally:
-                self._connected = False
 
-        if self.loop:
-            self.loop.call_soon_threadsafe(self.loop.stop)
-            if self.thread:
-                self.thread.join(timeout=5)
+        self._connected = False
+        self.client = None
+        self._data_event.clear()
+        self._stop_loop()
