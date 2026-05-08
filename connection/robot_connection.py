@@ -41,9 +41,10 @@ class RobotConnection(ABC):
         pass
 
     def __enter__(self):
-        """
-        If context manager is entered, do nothing
-        """
+        """Context manager entry method - tries to connect to robot, if connection cannot be established, raises RuntimeError""" 
+        if not self.connect():
+            raise RuntimeError('Failed to connect to robot')
+        
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

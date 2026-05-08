@@ -76,7 +76,7 @@ class StatusPacketWriter(PacketWriter):
         :param str path: path including name of the output file without extension
         :param list[str] header: list of strings corresponding to names of columns in csv header
         """
-        self.status_file = open(path + '.csv', 'w')
+        self.status_file = open(path + '.csv', 'w', newline='')
         self.status_csv = csv.writer(self.status_file)
         self.status_csv.writerow(header)
 
