@@ -97,7 +97,7 @@ class BTLEConnection(RobotConnection):
                     self._connect_async(),
                     self.loop
                 )
-                result = future.result(timeout=10)
+                result = future.result()
                 if result:
                     self._connected = True
                     return True
@@ -143,12 +143,12 @@ class BTLEConnection(RobotConnection):
         """
         if not self._connected or not self.client:
             raise RuntimeError('Not connected to device')
-        
+
         future = asyncio.run_coroutine_threadsafe(
             self.client.write_gatt_char(self.char_uuid, data),
             self.loop
         )
-        future.result(timeout=5)
+        future.result()
 
     def disconnect(self):
         """Disconnects from peripheral"""
