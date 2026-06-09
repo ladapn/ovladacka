@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import patch, mock_open, call
 from data_writers import packet_writer
@@ -30,6 +32,20 @@ class PacketWriterTestCase(unittest.TestCase):
 
         self.assertDictEqual(expected_dict, ultrasound_writer.data_frame_dict)
 
+    def test_usnd_packet_writer_close_without_data(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = os.path.join(temp_dir, 'usnd')
+            ultrasound_writer = packet_writer.USNDPacketWriter(path, [100, 101, 102, 103])
+            ultrasound_writer.close()
+
+            output_path = path + '.csv'
+            self.assertTrue(os.path.exists(output_path))
+
+            with open(output_path, 'r', encoding='utf-8') as csv_file:
+                content = csv_file.read()
+
+            self.assertIn('tick_ms,front,right_front,right_center,right_back,right_min', content)
+            self.assertEqual(content.strip(), 'tick_ms,front,right_front,right_center,right_back,right_min')
 
 
 
