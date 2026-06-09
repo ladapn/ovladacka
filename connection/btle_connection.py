@@ -1,34 +1,15 @@
-from bluepy import btle
+import asyncio
+import queue
+import threading
+import time
+from bleak import BleakClient
 from connection.robot_connection import RobotConnection
-
-
-class RobotCommDelegate(btle.DefaultDelegate):
-    """
-    Class implementing bluepy's DeafultDelegate interface. Its purpose is to encapsulate callback to handle data
-    incoming from a remote device connected via Bluetooth Low Energy (BTLE).
-    """
-    def __init__(self, incoming_data_queue):
-        """
-        Constructor method
-        :param queue.Queue incoming_data_queue: queue to hold data received from the device we are connecting to
-        """
-        btle.DefaultDelegate.__init__(self)
-        self.incoming_data_queue = incoming_data_queue
-
-    def handleNotification(self, cHandle, data):
-        """
-        Callback to process data received from a connected remote device
-        :param int cHandle: characteristics handle to distinguish which characteristics of the connected device sent the
-        data
-        :param bytes data: data received from the device
-        """
-        self.incoming_data_queue.put(data)
 
 
 class BTLEConnection(RobotConnection):
     """
     This is a class providing functionality to connect to and to communicate with a remote device via Bluetooth Low
-    Energy (BTLE).
+    Energy (BTLE) using the bleak library.
     """
     def __init__(self, address, service_uuid, characteristics_uuid, incoming_data_queue):
         """
@@ -41,11 +22,59 @@ class BTLEConnection(RobotConnection):
         :param queue.Queue incoming_data_queue: queue to hold data received from the device we are connecting to
         """
         self.address = address
-        self.service_uuid = btle.UUID(service_uuid)
-        self.char_uuid = btle.UUID(characteristics_uuid)
-        self.characteristics = None
-        self.delegate = RobotCommDelegate(incoming_data_queue)
-        self.peripheral = None
+        self.service_uuid = service_uuid
+        self.char_uuid = characteristics_uuid
+        self.incoming_data_queue = incoming_data_queue
+        self._data_event = threading.Event()
+        self.client = None
+        self.loop = None
+        self.thread = None
+        self._connected = False
+
+    def _notification_handler(self, sender, data):
+        """Callback for BLE notifications"""
+        self.incoming_data_queue.put(data)
+        self._data_event.set()
+
+    def _run_async_loop(self):
+        """Run the asyncio event loop in a background thread"""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    def _start_loop(self):
+        """Start the background asyncio loop if it is not already running."""
+        if self.loop and self.loop.is_running():
+            return True
+
+        self.thread = threading.Thread(target=self._run_async_loop, daemon=True)
+        self.thread.start()
+
+        timeout = time.time() + 5
+        while self.loop is None and time.time() < timeout:
+            time.sleep(0.01)
+
+        return self.loop is not None
+
+    def _stop_loop(self):
+        """Stop and clean up the background asyncio loop."""
+        if self.loop:
+            try:
+                self.loop.call_soon_threadsafe(self.loop.stop)
+            except RuntimeError:
+                pass
+
+        if self.thread:
+            self.thread.join(timeout=5)
+
+        if self.loop and not self.loop.is_closed():
+            try:
+                self.loop.close()
+            except RuntimeError:
+                pass
+
+        self.loop = None
+        self.thread = None
 
     def connect(self, number_of_retries=3):
         """
@@ -54,44 +83,86 @@ class BTLEConnection(RobotConnection):
         defaults to 3
         :return True if connection established, False if connection cannot be established
         """
+        if self._connected:
+            return True
+
+        if not self._start_loop():
+            print('Failed to start asyncio loop')
+            return False
+
         for tries in range(number_of_retries):
             print(f'Trying to connect to peripheral {self.address}...')
             try:
-                self.peripheral = btle.Peripheral(self.address)
-                break
-            except btle.BTLEDisconnectError as e:
+                future = asyncio.run_coroutine_threadsafe(
+                    self._connect_async(),
+                    self.loop
+                )
+                result = future.result()
+                if result:
+                    self._connected = True
+                    return True
+            except Exception as e:
                 print(e)
                 if tries == (number_of_retries - 1):
                     print('Giving up')
-                    return False
+                    break
                 print('Trying again...')
 
-        self.peripheral.setDelegate(self.delegate)
-        svc = self.peripheral.getServiceByUUID(self.service_uuid)
-        self.characteristics = svc.getCharacteristics(self.char_uuid)[0]
+        self._stop_loop()
+        return False
 
-        # Enable notifications for the characteristics
-        # Without this nothing happens when device sends data to PC...
-        self.peripheral.writeCharacteristic(self.characteristics.valHandle + 1, b"\x01\x00")
-
-        return True
+    async def _connect_async(self):
+        """Async connection routine"""
+        try:
+            self.client = BleakClient(self.address)
+            await self.client.connect()
+            await self.client.start_notify(self.char_uuid, self._notification_handler)
+            return True
+        except Exception as e:
+            self.client = None
+            print(f'Connection error: {e}')
+            return False
 
     def wait_for_notifications(self, timeout):
         """
-        Wait for notification that there are new data from the connected device available. The method blocks until
-        new data is available, or until maximal waiting time elapses
+        Wait for notification that there are new data from the connected device available.
         :param float timeout: maximal waiting time in seconds
         :return True if data received, False in case of timeout
         """
-        return self.peripheral.waitForNotifications(timeout)
+        result = self._data_event.wait(timeout=timeout)
+        # Check if queue actually has data (event might be stale)
+        if result or not self.incoming_data_queue.empty():
+            self._data_event.clear()
+            return True
+        return False
 
     def write(self, data):
         """
         Send data to peripheral
         :param bytes data: data to be sent
         """
-        self.characteristics.write(data)
+        if not self._connected or not self.client:
+            raise RuntimeError('Not connected to device')
+
+        future = asyncio.run_coroutine_threadsafe(
+            self.client.write_gatt_char(self.char_uuid, data),
+            self.loop
+        )
+        future.result()
 
     def disconnect(self):
         """Disconnects from peripheral"""
-        self.peripheral.disconnect()
+        if self._connected and self.client and self.loop:
+            future = asyncio.run_coroutine_threadsafe(
+                self.client.disconnect(),
+                self.loop
+            )
+            try:
+                future.result(timeout=5)
+            except Exception as e:
+                print(f'Disconnect error: {e}')
+
+        self._connected = False
+        self.client = None
+        self._data_event.clear()
+        self._stop_loop()
