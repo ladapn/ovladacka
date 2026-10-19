@@ -11,6 +11,15 @@ NOTE: if you wish to work only in simulation mode, you can skip this part
 
 Create a copy of `connection.json.TEMPLATE` file and delete the `.TEMPLATE` suffix from the name of your copy. 
 Open your copy and fill in the information about the required connection type. 
+
+The robot is found by its advertised `name` (`wallckr` if left out). If `address` is filled in, ovladacka connects to 
+that address directly instead of scanning.
+
+The template is set up for [wallckr-z2](https://github.com/ladapn/wallckr-z2), which uses the Nordic UART Service: 
+commands are written to `rx_char_uuid`, data from the robot arrives as notifications on `tx_char_uuid`. The original 
+wallckr uses an HM-10 module with one characteristic for both directions; for it, replace the two with:
+
+`"char_uuid": "0000FFE1-0000-1000-8000-00805F9B34FB"`
 ### Run it
 #### Normal mode
 `$ python ovladacka.py`

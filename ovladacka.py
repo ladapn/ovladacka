@@ -26,10 +26,12 @@ def main():
     # Create robot connection
     try:
         btle_config = config['BTLE']
+        write_uuid, notify_uuid = btle_connection.characteristic_uuids(btle_config)
         robot_conn = btle_connection.BTLEConnection(
-            btle_config['address'],
-            btle_config['service_uuid'],
-            btle_config['char_uuid'],
+            btle_config.get('address') or None,
+            btle_config.get('name', btle_connection.DEFAULT_NAME),
+            write_uuid,
+            notify_uuid,
             incoming_data_queue
         )
     except KeyError as e:
