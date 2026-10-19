@@ -2,8 +2,26 @@ import asyncio
 import queue
 import threading
 import time
-from bleak import BleakClient
+from bleak import BleakClient, BleakScanner
 from connection.robot_connection import RobotConnection
+
+DEFAULT_NAME = 'wallckr'
+SCAN_TIMEOUT = 10.0
+
+
+def characteristic_uuids(btle_config):
+    """
+    Pick the characteristics to write commands to and to receive notifications from
+    :param dict btle_config: BTLE connection configuration, holding either "char_uuid" (one characteristic for both
+    directions, as on HM-10) or "rx_char_uuid" and "tx_char_uuid" (Nordic UART Service: commands are written to RX,
+    data is notified on TX)
+    :return: tuple (write_uuid, notify_uuid)
+    :raises KeyError: if the configuration holds neither
+    """
+    if 'char_uuid' in btle_config:
+        return btle_config['char_uuid'], btle_config['char_uuid']
+
+    return btle_config['rx_char_uuid'], btle_config['tx_char_uuid']
 
 
 class BTLEConnection(RobotConnection):
@@ -11,19 +29,22 @@ class BTLEConnection(RobotConnection):
     This is a class providing functionality to connect to and to communicate with a remote device via Bluetooth Low
     Energy (BTLE) using the bleak library.
     """
-    def __init__(self, address, service_uuid, characteristics_uuid, incoming_data_queue):
+    def __init__(self, address, name, write_uuid, notify_uuid, incoming_data_queue):
         """
         Constructor method
-        :param str address: Hardware address of BTLE device in the following format: "00:00:00:00:00:00"
-        :param str service_uuid: BTLE UUID of service we want to connect to, formatted as:
+        :param str address: Hardware address of BTLE device in the following format: "00:00:00:00:00:00", or None to
+        find the device by name instead
+        :param str name: advertised name of BTLE device, used when no address is given
+        :param str write_uuid: BTLE UUID of characteristic to write data to, formatted as:
         "00000000-0000-0000-0000-000000000000"
-        :param str characteristics_uuid: BTLE UUID of service we want to connect to, formatted as:
-        "00000000-0000-0000-0000-000000000000"
+        :param str notify_uuid: BTLE UUID of characteristic to receive notifications from, same format; may equal
+        write_uuid
         :param queue.Queue incoming_data_queue: queue to hold data received from the device we are connecting to
         """
         self.address = address
-        self.service_uuid = service_uuid
-        self.char_uuid = characteristics_uuid
+        self.name = name
+        self.write_uuid = write_uuid
+        self.notify_uuid = notify_uuid
         self.incoming_data_queue = incoming_data_queue
         self._data_event = threading.Event()
         self.client = None
@@ -91,7 +112,7 @@ class BTLEConnection(RobotConnection):
             return False
 
         for tries in range(number_of_retries):
-            print(f'Trying to connect to peripheral {self.address}...')
+            print(f'Trying to connect to peripheral {self.address or self.name}...')
             try:
                 future = asyncio.run_coroutine_threadsafe(
                     self._connect_async(),
@@ -114,9 +135,16 @@ class BTLEConnection(RobotConnection):
     async def _connect_async(self):
         """Async connection routine"""
         try:
-            self.client = BleakClient(self.address)
+            # The address may change between boots (e.g. a random static address), so without a configured address the
+            # device is found by its name.
+            device = self.address or await BleakScanner.find_device_by_name(self.name, timeout=SCAN_TIMEOUT)
+            if device is None:
+                print(f'No device named "{self.name}" found')
+                return False
+
+            self.client = BleakClient(device)
             await self.client.connect()
-            await self.client.start_notify(self.char_uuid, self._notification_handler)
+            await self.client.start_notify(self.notify_uuid, self._notification_handler)
             return True
         except Exception as e:
             self.client = None
@@ -145,7 +173,7 @@ class BTLEConnection(RobotConnection):
             raise RuntimeError('Not connected to device')
 
         future = asyncio.run_coroutine_threadsafe(
-            self.client.write_gatt_char(self.char_uuid, data),
+            self.client.write_gatt_char(self.write_uuid, data),
             self.loop
         )
         future.result()
